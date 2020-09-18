@@ -4,8 +4,8 @@
 # There is no cmake support for modules yet. This build script build with clang++
 #
 
-clang++ -std=c++2a -fmodules-ts --precompile math.cppm -o math.pcm              // 1
-clang++ -std=c++2a -fmodules-ts  -c math.pcm -o math1.pcm.o                     // 2
-clang++ -std=c++2a -fmodules-ts -c math.cpp -fmodule-file=math.pcm -o math.o    // 2
-clang++ -std=c++2a -fmodules-ts -c main.cpp -fmodule-file=math.pcm -o main.o    // 3
-clang++  math.pcm main.o math.o -o math                                         // 4
+clang++ -std=c++2a -fmodules-ts --precompile module_math.cppm -o module_math.pcm
+clang++ -std=c++2a -fmodules-ts  -c module_math.pcm -o math1.pcm.o
+clang++ -std=c++2a -fmodules-ts -c module_math.cpp -fmodule-file=module_math.pcm -o module_math.o
+clang++ -std=c++2a -fmodules-ts -c main.cxx -fmodule-file=module_math.pcm -o main.o
+clang++ module_math.pcm main.o module_math.o -o main.out
