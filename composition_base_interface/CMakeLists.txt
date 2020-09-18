@@ -1,0 +1,1 @@
+add_executable(composition_base_interface composition_base_interface.cxx)
