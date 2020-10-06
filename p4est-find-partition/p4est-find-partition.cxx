@@ -89,6 +89,9 @@ private:
   std::mt19937_64 rng;
 };
 
+//-------------------------------------
+//-------------------------------------
+//-------------------------------------
 
 /*
  * Fill a list of points with random numbers between a  and b.
@@ -110,6 +113,123 @@ fill_points_randomly(std::vector<dealii::Point<dim>> &points,
     }
 }
 
+//-------------------------------------
+//-------------------------------------
+//-------------------------------------
+
+namespace internal
+{
+  template <int dim>
+  struct types;
+
+  template <>
+  struct types<2>
+  {
+    using connectivity     = p4est_connectivity_t;
+    using forest           = p4est_t;
+    using tree             = p4est_tree_t;
+    using quadrant         = p4est_quadrant_t;
+    using topidx           = p4est_topidx_t;
+    using locidx           = p4est_locidx_t;
+    using gloidx           = p4est_gloidx_t;
+    using balance_type     = p4est_connect_type_t;
+    using ghost            = p4est_ghost_t;
+    using transfer_context = p4est_transfer_context_t;
+  };
+
+  template <>
+  struct types<3>
+  {
+    using connectivity     = p8est_connectivity_t;
+    using forest           = p8est_t;
+    using tree             = p8est_tree_t;
+    using quadrant         = p8est_quadrant_t;
+    using topidx           = p4est_topidx_t;
+    using locidx           = p4est_locidx_t;
+    using gloidx           = p4est_gloidx_t;
+    using balance_type     = p8est_connect_type_t;
+    using ghost            = p8est_ghost_t;
+    using transfer_context = p8est_transfer_context_t;
+  };
+
+  template <int dim>
+  struct functions;
+
+  template <>
+  struct functions<2>
+  {
+    static void (&search_partition)(types<2>::forest *       p4est,
+                                    int                      call_post,
+                                    p4est_search_partition_t quadrant_fn,
+                                    p4est_search_partition_t point_fn,
+                                    sc_array_t *             points);
+  };
+
+  template <>
+  struct functions<3>
+  {
+    static void (&search_partition)(types<3>::forest *       p4est,
+                                    int                      call_post,
+                                    p4est_search_partition_t quadrant_fn,
+                                    p4est_search_partition_t point_fn,
+                                    sc_array_t *             points);
+  };
+
+  ////////////////////////////////////////////////////////////////////////
+
+  void (&functions<2>::search_partition)(types<2>::forest *       p4est,
+                                         int                      call_post,
+                                         p4est_search_partition_t quadrant_fn,
+                                         p4est_search_partition_t point_fn,
+                                         sc_array_t *             points) =
+    p4est_search_partition;
+
+
+  void (&functions<3>::search_partition)(types<3>::forest *       p4est,
+                                         int                      call_post,
+                                         p4est_search_partition_t quadrant_fn,
+                                         p4est_search_partition_t point_fn,
+                                         sc_array_t *             points) =
+    p4est_search_partition;
+
+  ////////////////////////////////////////////////////////////////////////
+
+//  static int
+//  spheres_local_quadrant(p4est_t *         p4est,
+//                         p4est_topidx_t    which_tree,
+//                         p4est_quadrant_t *quadrant,
+//                         p4est_locidx_t    local_num,
+//                         void *            point)
+//  {
+//    return 1;
+//  }
+//
+//  static int
+//  spheres_local_point(p4est_t *         p4est,
+//                      p4est_topidx_t    which_tree,
+//                      p4est_quadrant_t *quadrant,
+//                      p4est_locidx_t    local_num,
+//                      void *            point)
+//  {
+//    return 0;
+//  }
+
+
+
+//    points = sc_array_new_count (sizeof (p4est_locidx_t), g->lsph);
+//    for (li = 0; li < g->lsph; ++li) {
+//      *(p4est_locidx_t *) sc_array_index_int (points, li) = li;
+//    }
+//    P4EST_INFOF ("Searching partition for %ld local spheres\n", (long) g->lsph);
+//    p4est_search_partition (g->p4est, 0, spheres_partition_quadrant,
+//                            spheres_partition_point, points);
+//    sc_array_destroy_null (&points);
+
+} // namespace internal
+
+//-------------------------------------
+//-------------------------------------
+//-------------------------------------
 
 /*
  * Class finds the MPI rank of the partition of the distributed triangulation
@@ -138,6 +258,9 @@ public:
   write_mesh(const std::string &filename);
 
   int
+  find_owner_rank_p4est(const dealii::Point<dim> &p);
+
+  int
   find_owner_rank(const dealii::Point<dim> &p);
 
   void
@@ -152,15 +275,15 @@ private:
 
   MPI_Comm mpi_communicator;
 
-  dealii::ConditionalOStream pcout;
-
-  dealii::TimerOutput computing_timer;
-
   dealii::parallel::distributed::Triangulation<dim> triangulation;
+
+  dealii::FE_Q<dim> fe;
 
   dealii::DoFHandler<dim> dof_handler;
 
-  dealii::FE_Q<dim> fe;
+  dealii::ConditionalOStream pcout;
+
+  dealii::TimerOutput computing_timer;
 
   const dealii::Mapping<dim> &mapping;
 
@@ -175,20 +298,20 @@ private:
 template <int dim>
 PartitionFinder<dim>::PartitionFinder()
   : mpi_communicator(MPI_COMM_WORLD)
+  , triangulation(mpi_communicator,
+                  typename dealii::Triangulation<dim>::MeshSmoothing(
+                    dealii::Triangulation<dim>::smoothing_on_refinement |
+                    dealii::Triangulation<dim>::smoothing_on_coarsening))
+  , fe(1)
+  , dof_handler(triangulation)
   , pcout(std::cout,
           (dealii::Utilities::MPI::this_mpi_process(mpi_communicator) == 0))
   , computing_timer(mpi_communicator,
                     pcout,
                     dealii::TimerOutput::summary,
                     dealii::TimerOutput::wall_times)
-  , triangulation(mpi_communicator,
-                  typename dealii::Triangulation<dim>::MeshSmoothing(
-                    dealii::Triangulation<dim>::smoothing_on_refinement |
-                    dealii::Triangulation<dim>::smoothing_on_coarsening))
-  , dof_handler(triangulation)
-  , fe(1)
   , mapping(dealii::StaticMappingQ1<dim>::mapping)
-  , cell_hint(dof_handler.begin_active())
+  , cell_hint()
   , is_periodic(false)
   , is_initialized(false)
 {}
@@ -226,9 +349,11 @@ PartitionFinder<dim>::generate_triangualtion(const unsigned int n_refine)
 
   triangulation.refine_global(n_refine);
 
-  cell_hint = triangulation.begin_active();
+  //  cell_hint = triangulation.begin_active();
 
   dof_handler.distribute_dofs(fe);
+
+  cell_hint = dof_handler.begin_active();
 
   is_initialized = true;
 }
@@ -285,6 +410,35 @@ PartitionFinder<dim>::write_mesh(const std::string &filename)
 
   pcout << "*** Written to:          " << filename << ".pvtu" << std::endl
         << std::endl;
+}
+
+
+template <int dim>
+int
+PartitionFinder<dim>::find_owner_rank_p4est(const dealii::Point<dim> &p)
+{
+  Assert(is_initialized, dealii::ExcNotInitialized());
+
+  dealii::Timer timer;
+  timer.restart();
+
+  /*
+   * Get access to some p4est internals
+   */
+  const ForrestType *forrest = triangulation.get_p4est();
+
+  int mpi_rank = -1;
+
+
+
+  timer.stop();
+  std::cout << "---> MPI rank   "
+            << dealii::Utilities::MPI::this_mpi_process(mpi_communicator)
+            << "   search for point   " << p << " ....."
+            << " done in   " << timer.cpu_time() << "   seconds.   "
+            << " P4EST found owner rank   " << mpi_rank << std::endl;
+
+  return mpi_rank;
 }
 
 
@@ -361,7 +515,8 @@ PartitionFinder<dim>::find_owner_rank(const dealii::Point<dim> &p)
             << dealii::Utilities::MPI::this_mpi_process(mpi_communicator)
             << "   search for point   " << p << " ....."
             << " done in   " << timer.cpu_time() << "   seconds.   "
-            << " Found owner rank   " << mpi_rank << std::endl;
+            << " Found cell_id   " << cell->id() << "   and owner rank   "
+            << mpi_rank << std::endl;
 
   return mpi_rank;
 }
