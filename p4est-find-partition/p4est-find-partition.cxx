@@ -20,6 +20,8 @@
 // p4est
 #include <p4est.h>
 #include <p4est_search.h>
+#include <p8est.h>
+#include <p8est_search.h>
 
 // Boost
 #include <boost/optional.hpp>
@@ -170,8 +172,8 @@ namespace internal
   {
     static void (&search_partition)(types<3>::forest *       p4est,
                                     int                      call_post,
-                                    p4est_search_partition_t quadrant_fn,
-                                    p4est_search_partition_t point_fn,
+                                    p8est_search_partition_t quadrant_fn,
+                                    p8est_search_partition_t point_fn,
                                     sc_array_t *             points);
   };
 
@@ -187,43 +189,44 @@ namespace internal
 
   void (&functions<3>::search_partition)(types<3>::forest *       p4est,
                                          int                      call_post,
-                                         p4est_search_partition_t quadrant_fn,
-                                         p4est_search_partition_t point_fn,
+                                         p8est_search_partition_t quadrant_fn,
+                                         p8est_search_partition_t point_fn,
                                          sc_array_t *             points) =
-    p4est_search_partition;
+    p8est_search_partition;
 
   ////////////////////////////////////////////////////////////////////////
 
-//  static int
-//  spheres_local_quadrant(p4est_t *         p4est,
-//                         p4est_topidx_t    which_tree,
-//                         p4est_quadrant_t *quadrant,
-//                         p4est_locidx_t    local_num,
-//                         void *            point)
-//  {
-//    return 1;
-//  }
-//
-//  static int
-//  spheres_local_point(p4est_t *         p4est,
-//                      p4est_topidx_t    which_tree,
-//                      p4est_quadrant_t *quadrant,
-//                      p4est_locidx_t    local_num,
-//                      void *            point)
-//  {
-//    return 0;
-//  }
+  //  static int
+  //  spheres_local_quadrant(p4est_t *         p4est,
+  //                         p4est_topidx_t    which_tree,
+  //                         p4est_quadrant_t *quadrant,
+  //                         p4est_locidx_t    local_num,
+  //                         void *            point)
+  //  {
+  //    return 1;
+  //  }
+  //
+  //  static int
+  //  spheres_local_point(p4est_t *         p4est,
+  //                      p4est_topidx_t    which_tree,
+  //                      p4est_quadrant_t *quadrant,
+  //                      p4est_locidx_t    local_num,
+  //                      void *            point)
+  //  {
+  //    return 0;
+  //  }
 
 
 
-//    points = sc_array_new_count (sizeof (p4est_locidx_t), g->lsph);
-//    for (li = 0; li < g->lsph; ++li) {
-//      *(p4est_locidx_t *) sc_array_index_int (points, li) = li;
-//    }
-//    P4EST_INFOF ("Searching partition for %ld local spheres\n", (long) g->lsph);
-//    p4est_search_partition (g->p4est, 0, spheres_partition_quadrant,
-//                            spheres_partition_point, points);
-//    sc_array_destroy_null (&points);
+  //    points = sc_array_new_count (sizeof (p4est_locidx_t), g->lsph);
+  //    for (li = 0; li < g->lsph; ++li) {
+  //      *(p4est_locidx_t *) sc_array_index_int (points, li) = li;
+  //    }
+  //    P4EST_INFOF ("Searching partition for %ld local spheres\n", (long)
+  //    g->lsph); p4est_search_partition (g->p4est, 0,
+  //    spheres_partition_quadrant,
+  //                            spheres_partition_point, points);
+  //    sc_array_destroy_null (&points);
 
 } // namespace internal
 
