@@ -137,6 +137,9 @@ namespace internal
     using balance_type     = p4est_connect_type_t;
     using ghost            = p4est_ghost_t;
     using transfer_context = p4est_transfer_context_t;
+
+    // Callback types (function pointers)
+    using search_partition_callback = p4est_search_partition_t;
   };
 
   template <>
@@ -152,6 +155,9 @@ namespace internal
     using balance_type     = p8est_connect_type_t;
     using ghost            = p8est_ghost_t;
     using transfer_context = p8est_transfer_context_t;
+
+    // Callback types (function pointers)
+    using search_partition_callback = p8est_search_partition_t;
   };
 
   template <int dim>
@@ -160,73 +166,43 @@ namespace internal
   template <>
   struct functions<2>
   {
-    static void (&search_partition)(types<2>::forest *       p4est,
-                                    int                      call_post,
-                                    p4est_search_partition_t quadrant_fn,
-                                    p4est_search_partition_t point_fn,
-                                    sc_array_t *             points);
+    static void (&search_partition)(
+      types<2>::forest *                  p4est,
+      int                                 call_post,
+      types<2>::search_partition_callback quadrant_fn,
+      types<2>::search_partition_callback point_fn,
+      sc_array_t *                        points);
   };
 
   template <>
   struct functions<3>
   {
-    static void (&search_partition)(types<3>::forest *       p4est,
-                                    int                      call_post,
-                                    p8est_search_partition_t quadrant_fn,
-                                    p8est_search_partition_t point_fn,
-                                    sc_array_t *             points);
+    static void (&search_partition)(
+      types<3>::forest *                  p4est,
+      int                                 call_post,
+      types<3>::search_partition_callback quadrant_fn,
+      types<3>::search_partition_callback point_fn,
+      sc_array_t *                        points);
   };
 
   ////////////////////////////////////////////////////////////////////////
 
-  void (&functions<2>::search_partition)(types<2>::forest *       p4est,
-                                         int                      call_post,
-                                         p4est_search_partition_t quadrant_fn,
-                                         p4est_search_partition_t point_fn,
-                                         sc_array_t *             points) =
-    p4est_search_partition;
+  void (&functions<2>::search_partition)(
+    types<2>::forest *                  p4est,
+    int                                 call_post,
+    types<2>::search_partition_callback quadrant_fn,
+    types<2>::search_partition_callback point_fn,
+    sc_array_t *                        points) = p4est_search_partition;
 
 
-  void (&functions<3>::search_partition)(types<3>::forest *       p4est,
-                                         int                      call_post,
-                                         p8est_search_partition_t quadrant_fn,
-                                         p8est_search_partition_t point_fn,
-                                         sc_array_t *             points) =
-    p8est_search_partition;
+  void (&functions<3>::search_partition)(
+    types<3>::forest *                  p4est,
+    int                                 call_post,
+    types<3>::search_partition_callback quadrant_fn,
+    types<3>::search_partition_callback point_fn,
+    sc_array_t *                        points) = p8est_search_partition;
 
   ////////////////////////////////////////////////////////////////////////
-
-  //  static int
-  //  spheres_local_quadrant(p4est_t *         p4est,
-  //                         p4est_topidx_t    which_tree,
-  //                         p4est_quadrant_t *quadrant,
-  //                         p4est_locidx_t    local_num,
-  //                         void *            point)
-  //  {
-  //    return 1;
-  //  }
-  //
-  //  static int
-  //  spheres_local_point(p4est_t *         p4est,
-  //                      p4est_topidx_t    which_tree,
-  //                      p4est_quadrant_t *quadrant,
-  //                      p4est_locidx_t    local_num,
-  //                      void *            point)
-  //  {
-  //    return 0;
-  //  }
-
-
-
-  //    points = sc_array_new_count (sizeof (p4est_locidx_t), g->lsph);
-  //    for (li = 0; li < g->lsph; ++li) {
-  //      *(p4est_locidx_t *) sc_array_index_int (points, li) = li;
-  //    }
-  //    P4EST_INFOF ("Searching partition for %ld local spheres\n", (long)
-  //    g->lsph); p4est_search_partition (g->p4est, 0,
-  //    spheres_partition_quadrant,
-  //                            spheres_partition_point, points);
-  //    sc_array_destroy_null (&points);
 
 } // namespace internal
 
@@ -275,6 +251,59 @@ private:
   get_reference_coordinates(
     const typename dealii::DoFHandler<dim>::active_cell_iterator &cell,
     const dealii::Point<dim> &                                    point) const;
+
+  static int
+  my_local_quadrant_fn(typename internal::types<dim>::forest *  p4est,
+                       typename internal::types<dim>::topidx    which_tree,
+                       typename internal::types<dim>::quadrant *quadrant,
+                       typename internal::types<dim>::locidx    local_num,
+                       void *                                   point)
+  {
+    // User pointer is a parallel triangualtion
+    dealii::parallel::distributed::Triangulation<dim> *this_triangualtion_ptr =
+      static_cast<dealii::parallel::distributed::Triangulation<dim> *>(
+        p4est->user_pointer);
+
+    // Check some things
+    Assert(this_triangualtion_ptr != nullptr, dealii::ExcInternalError());
+    Assert(this_triangualtion_ptr == this_triangualtion_ptr,
+           dealii::ExcInternalError());
+    Assert(point == nullptr,
+           dealii::ExcInternalError()); // point must be nullptr here
+
+    /*
+     * Do some things.
+     */
+
+    return 1;
+  }
+
+  static int
+  my_local_point_fn(typename internal::types<dim>::forest *  p4est,
+                    typename internal::types<dim>::topidx    which_tree,
+                    typename internal::types<dim>::quadrant *quadrant,
+                    typename internal::types<dim>::locidx    local_num,
+                    void *                                   point)
+  {
+    // User pointer is a parallel triangualtion
+    dealii::parallel::distributed::Triangulation<dim> *this_triangualtion_ptr =
+      static_cast<dealii::parallel::distributed::Triangulation<dim> *>(
+        p4est->user_pointer);
+
+    // Check some things
+    Assert(this_triangualtion_ptr != nullptr, dealii::ExcInternalError());
+    Assert(this_triangualtion_ptr == this_triangualtion_ptr,
+           dealii::ExcInternalError());
+    Assert(point != nullptr,
+           dealii::ExcInternalError()); // point must NOT be nullptr here
+
+    /*
+     * Do some point checks for the point to return true (zero) or false
+     * (nonzero).
+     */
+
+    return 0;
+  }
 
   MPI_Comm mpi_communicator;
 
@@ -428,9 +457,22 @@ PartitionFinder<dim>::find_owner_rank_p4est(const dealii::Point<dim> &p)
   /*
    * Get access to some p4est internals
    */
-  const ForrestType *forrest = triangulation.get_p4est();
+  ForrestType *forrest = const_cast<ForrestType*>(triangulation.get_p4est());
 
   int mpi_rank = -1;
+
+  sc_array_t *single_point;
+
+  single_point = sc_array_new_count(sizeof(double), dim);
+
+  for (unsigned int d = 0; d < dim; ++d)
+    {
+      *(p4est_locidx_t *)sc_array_index_int(single_point, d) = p(d);
+    }
+
+  internal::functions<dim>::search_partition(
+    forrest, 0, my_local_quadrant_fn, my_local_point_fn, single_point);
+  sc_array_destroy_null(&single_point);
 
 
 
@@ -457,7 +499,7 @@ PartitionFinder<dim>::find_owner_rank(const dealii::Point<dim> &p)
   /*
    * Get access to some p4est internals
    */
-  const ForrestType *forrest = triangulation.get_p4est();
+  ForrestType *forrest = const_cast<ForrestType*>(triangulation.get_p4est());
 
   int mpi_rank = -1;
 
@@ -604,7 +646,7 @@ main(int argc, char *argv[])
           }
         std::cout << std::endl;
 
-        partition_finder.find_owner_rank(test_points[0]);
+        partition_finder.find_owner_rank_p4est(test_points[0]);
       }
     }
   catch (std::exception &exc)
