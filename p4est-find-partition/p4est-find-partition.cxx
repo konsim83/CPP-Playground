@@ -256,7 +256,8 @@ private:
   my_local_quadrant_fn(typename internal::types<dim>::forest *  p4est,
                        typename internal::types<dim>::topidx    which_tree,
                        typename internal::types<dim>::quadrant *quadrant,
-                       typename internal::types<dim>::locidx    local_num,
+                       int                                      pfirst,
+                       int                                      plast,
                        void *                                   point)
   {
     // User pointer is a parallel triangualtion
@@ -268,12 +269,19 @@ private:
     Assert(this_triangualtion_ptr != nullptr, dealii::ExcInternalError());
     Assert(this_triangualtion_ptr == this_triangualtion_ptr,
            dealii::ExcInternalError());
+    //    Assert (0 <= pfirst && pfirst <= plast && plast < g->mpisize,
+    //    dealii::ExcInternalError());
     Assert(point == nullptr,
            dealii::ExcInternalError()); // point must be nullptr here
 
-    /*
-     * Do some things.
-     */
+    /* we are not trying to find local spheres */
+    //    if (pfirst == plast && pfirst == g->mpirank)
+    //      {
+    //        return 0;
+    //      }
+
+    std::cout << "Quadrant function called in tree: " << which_tree << " ("
+              << pfirst << ", " << plast << ")" << std::endl;
 
     return 1;
   }
@@ -282,7 +290,8 @@ private:
   my_local_point_fn(typename internal::types<dim>::forest *  p4est,
                     typename internal::types<dim>::topidx    which_tree,
                     typename internal::types<dim>::quadrant *quadrant,
-                    typename internal::types<dim>::locidx    local_num,
+                    int                                      pfirst,
+                    int                                      plast,
                     void *                                   point)
   {
     // User pointer is a parallel triangualtion
@@ -294,6 +303,8 @@ private:
     Assert(this_triangualtion_ptr != nullptr, dealii::ExcInternalError());
     Assert(this_triangualtion_ptr == this_triangualtion_ptr,
            dealii::ExcInternalError());
+    //    Assert (0 <= pfirst && pfirst <= plast && plast < g->mpisize,
+    //    dealii::ExcInternalError());
     Assert(point != nullptr,
            dealii::ExcInternalError()); // point must NOT be nullptr here
 
@@ -302,6 +313,15 @@ private:
      * (nonzero).
      */
 
+    double *point_double = (double *)point;
+    std::cout << "Point function called in tree: " << which_tree << " ("
+              << pfirst << ", " << plast << ")"
+              << "    for point:  < ";
+    for (unsigned int d = 0; d < dim; ++d)
+      {
+        std::cout << point_double[d] << " ";
+      }
+    std::cout << ">" << std::endl;
     return 0;
   }
 
@@ -457,24 +477,31 @@ PartitionFinder<dim>::find_owner_rank_p4est(const dealii::Point<dim> &p)
   /*
    * Get access to some p4est internals
    */
-  ForrestType *forrest = const_cast<ForrestType*>(triangulation.get_p4est());
+  ForrestType *forrest = const_cast<ForrestType *>(triangulation.get_p4est());
 
   int mpi_rank = -1;
 
+  // assign pointer to an array of points.
   sc_array_t *single_point;
 
-  single_point = sc_array_new_count(sizeof(double), dim);
+  // allocate memory for a single dim-dimensional point
+  single_point = sc_array_new_count(sizeof(double[dim]), 1);
 
+  // provide a pointer to access the point's coordinated
+  double *my_point = (double *)sc_array_index_int(single_point, 0);
+
+  // now assigne the actual value
   for (unsigned int d = 0; d < dim; ++d)
     {
-      *(p4est_locidx_t *)sc_array_index_int(single_point, d) = p(d);
+      my_point[d] = p(d);
     }
 
+  // Call the search partition function
   internal::functions<dim>::search_partition(
     forrest, 0, my_local_quadrant_fn, my_local_point_fn, single_point);
+
+  // Free the allocated memory
   sc_array_destroy_null(&single_point);
-
-
 
   timer.stop();
   std::cout << "---> MPI rank   "
@@ -499,7 +526,7 @@ PartitionFinder<dim>::find_owner_rank(const dealii::Point<dim> &p)
   /*
    * Get access to some p4est internals
    */
-  ForrestType *forrest = const_cast<ForrestType*>(triangulation.get_p4est());
+  ForrestType *forrest = const_cast<ForrestType *>(triangulation.get_p4est());
 
   int mpi_rank = -1;
 
@@ -643,10 +670,11 @@ main(int argc, char *argv[])
                       << dealii::Utilities::MPI::this_mpi_process(
                            MPI_COMM_WORLD)
                       << "    Point:   " << p << std::endl;
-          }
-        std::cout << std::endl;
 
-        partition_finder.find_owner_rank_p4est(test_points[0]);
+            partition_finder.find_owner_rank_p4est(p);
+
+            std::cout << std::endl;
+          }
       }
     }
   catch (std::exception &exc)
