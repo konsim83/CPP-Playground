@@ -274,16 +274,29 @@ private:
     Assert(point == nullptr,
            dealii::ExcInternalError()); // point must be nullptr here
 
+    MPI_Comm this_mpi_communicator = this_triangualtion_ptr->get_communicator();
+
     /* we are not trying to find local spheres */
     //    if (pfirst == plast && pfirst == g->mpirank)
     //      {
     //        return 0;
     //      }
 
-    std::cout << "Quadrant function called in tree: " << which_tree << " ("
-              << pfirst << ", " << plast << ")" << std::endl;
+    std::cout << "[Rank "
+              << dealii::Utilities::MPI::this_mpi_process(this_mpi_communicator)
+              << "]   "
+              << "Quadrant function called in tree: " << which_tree << " ("
+              << pfirst << ", " << plast << ")   "
+              << "Quadrant length   " << P4EST_QUADRANT_LEN(quadrant->level)
+              << "   on level   " << quadrant->level
+              << "   coord:   " << quadrant->x << " " << quadrant->y << " ";
+    if (dim == 3)
+      {
+        std::cout << quadrant->z << " ";
+      }
+    std::cout << std::endl;
 
-    return 1;
+    return /* true */ 1;
   }
 
   static int
@@ -308,21 +321,45 @@ private:
     Assert(point != nullptr,
            dealii::ExcInternalError()); // point must NOT be nullptr here
 
+    MPI_Comm this_mpi_communicator = this_triangualtion_ptr->get_communicator();
+
     /*
-     * Do some point checks for the point to return true (zero) or false
-     * (nonzero).
+     * Do some point checks for the point to return true (nonzero) or false
+     * (zero).
      */
 
     double *point_double = (double *)point;
-    std::cout << "Point function called in tree: " << which_tree << " ("
+    std::cout << "[Rank "
+              << dealii::Utilities::MPI::this_mpi_process(this_mpi_communicator)
+              << "]   "
+              << "Point function called in tree   : " << which_tree << " ("
               << pfirst << ", " << plast << ")"
-              << "    for point:  < ";
+              << "    for point:   ";
     for (unsigned int d = 0; d < dim; ++d)
       {
         std::cout << point_double[d] << " ";
       }
-    std::cout << ">" << std::endl;
-    return 0;
+    std::cout << "    ";
+
+    /* we may be up in the tree branches */
+    if (pfirst < plast)
+      {
+        if (/* condition for mismatch */ 0)
+          {
+            std::cout << "---> stopping recursion (no approx match)"
+                      << std::endl;
+            return /* false */ 0;
+          }
+
+        std::cout << "---> continuing recursion (approx match found)"
+                  << std::endl;
+
+        /* an optimistic match is good enough when we're walking the tree */
+        return /* true */ 1;
+      }
+
+    std::cout << "---> stopping recursion (pfirst==plast)" << std::endl;
+    return /* false */ 0;
   }
 
   MPI_Comm mpi_communicator;
@@ -504,9 +541,10 @@ PartitionFinder<dim>::find_owner_rank_p4est(const dealii::Point<dim> &p)
   sc_array_destroy_null(&single_point);
 
   timer.stop();
-  std::cout << "---> MPI rank   "
+  std::cout << "[Rank "
             << dealii::Utilities::MPI::this_mpi_process(mpi_communicator)
-            << "   search for point   " << p << " ....."
+            << "]   "
+            << "Search for point   " << p << " ....."
             << " done in   " << timer.cpu_time() << "   seconds.   "
             << " P4EST found owner rank   " << mpi_rank << std::endl;
 
@@ -643,8 +681,8 @@ main(int argc, char *argv[])
   try
     {
       // dimension
-      const int          dim      = 2;
-      const unsigned int n_refine = 4;
+      const int          dim      = 3;
+      const unsigned int n_refine = 3;
 
       dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
         argc, argv, dealii::numbers::invalid_unsigned_int);
@@ -659,17 +697,18 @@ main(int argc, char *argv[])
       //      if (dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
       {
         // generate a number of points
-        unsigned int                    N = 3;
+        unsigned int                    N = 1;
         std::vector<dealii::Point<dim>> test_points(N, dealii::Point<dim>());
 
         fill_points_randomly(test_points);
 
         for (auto &p : test_points)
           {
-            std::cout << "Rank:   "
+            std::cout << "[Rank "
                       << dealii::Utilities::MPI::this_mpi_process(
                            MPI_COMM_WORLD)
-                      << "    Point:   " << p << std::endl;
+                      << "]   "
+                      << "Point:   " << p << std::endl;
 
             partition_finder.find_owner_rank_p4est(p);
 
