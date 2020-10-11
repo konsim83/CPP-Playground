@@ -26,12 +26,17 @@
 // Boost
 #include <boost/optional.hpp>
 
+
+// C
+#include <stdio.h>
+
 // STL
 #include <chrono>
 #include <fstream>
 #include <iostream>
 #include <map>
 #include <random>
+#include <typeinfo>
 #include <vector>
 
 /*
@@ -282,19 +287,23 @@ private:
     //        return 0;
     //      }
 
-    std::cout << "[Rank "
-              << dealii::Utilities::MPI::this_mpi_process(this_mpi_communicator)
-              << "]   "
-              << "Quadrant function called in tree: " << which_tree << " ("
-              << pfirst << ", " << plast << ")   "
-              << "Quadrant length   " << P4EST_QUADRANT_LEN(quadrant->level)
-              << "   on level   " << quadrant->level
-              << "   coord:   " << quadrant->x << " " << quadrant->y << " ";
-    if (dim == 3)
-      {
-        std::cout << quadrant->z << " ";
-      }
-    std::cout << std::endl;
+    //    std::cout << "[Rank "
+    //              <<
+    //              dealii::Utilities::MPI::this_mpi_process(this_mpi_communicator)
+    //              << "]   "
+    //              << "Quadrant function called in tree: " << which_tree << "
+    //              ("
+    //              << pfirst << ", " << plast << ")   "
+    //              << "Quadrant length   " <<
+    //              P4EST_QUADRANT_LEN(quadrant->level)
+    //              << "   on level   " << quadrant->level
+    //              << "   coord:   " << quadrant->x << " " << quadrant->y << "
+    //              ";
+    //    if (dim == 3)
+    //      {
+    //        std::cout << quadrant->z << " ";
+    //      }
+    //    std::cout << std::endl;
 
     return /* true */ 1;
   }
@@ -328,13 +337,24 @@ private:
      * (zero).
      */
 
+    const auto quad_length_on_level = 1 << (static_cast<int>(P4EST_MAXLEVEL) -
+                                            static_cast<int>(quadrant->level));
+    // P4EST_QUADRANT_LEN(quadrant->level);
+
     double *point_double = (double *)point;
     std::cout << "[Rank "
               << dealii::Utilities::MPI::this_mpi_process(this_mpi_communicator)
               << "]   "
               << "Point function called in tree   : " << which_tree << " ("
-              << pfirst << ", " << plast << ")"
-              << "    for point:   ";
+              << pfirst << ", " << plast << ")   "
+              << "Quadrant length   " << quad_length_on_level
+              << "   on level   " << static_cast<int>(quadrant->level)
+              << "   coord:   " << quadrant->x << " " << quadrant->y << " ";
+    //    if (dim == 3)
+    //      {
+    //        std::cout << quadrant->z << " ";
+    //      }
+    std::cout << "    for point:   ";
     for (unsigned int d = 0; d < dim; ++d)
       {
         std::cout << point_double[d] << " ";
@@ -412,29 +432,37 @@ PartitionFinder<dim>::generate_triangualtion(const unsigned int n_refine)
 {
   dealii::TimerOutput::Scope t(computing_timer, "mesh generation");
 
-  dealii::GridGenerator::hyper_cube(triangulation,
-                                    0,
-                                    1,
-                                    /* colorize */ true);
-
-  if (is_periodic)
+  if (true)
     {
-      std::vector<dealii::GridTools::PeriodicFacePair<
-        typename dealii::parallel::distributed::Triangulation<
-          dim>::cell_iterator>>
-        periodicity_vector;
-
-      for (unsigned int d = 0; d < dim; ++d)
+      dealii::GridGenerator::hyper_L(triangulation, 0, 1);
+    }
+  else
+    {
+      dealii::GridGenerator::hyper_cube(triangulation,
+                                        0,
+                                        1,
+                                        /* colorize */ true);
+      if (is_periodic)
         {
-          dealii::GridTools::collect_periodic_faces(triangulation,
-                                                    /*b_id1*/ 2 * (d + 1) - 2,
-                                                    /*b_id2*/ 2 * (d + 1) - 1,
-                                                    /*direction*/ d,
-                                                    periodicity_vector);
-        }
+          std::vector<dealii::GridTools::PeriodicFacePair<
+            typename dealii::parallel::distributed::Triangulation<
+              dim>::cell_iterator>>
+            periodicity_vector;
 
-      triangulation.add_periodicity(periodicity_vector);
-    } // if
+          for (unsigned int d = 0; d < dim; ++d)
+            {
+              dealii::GridTools::collect_periodic_faces(triangulation,
+                                                        /*b_id1*/ 2 * (d + 1) -
+                                                          2,
+                                                        /*b_id2*/ 2 * (d + 1) -
+                                                          1,
+                                                        /*direction*/ d,
+                                                        periodicity_vector);
+            }
+
+          triangulation.add_periodicity(periodicity_vector);
+        } // if
+    }
 
   triangulation.refine_global(n_refine);
 
@@ -681,40 +709,46 @@ main(int argc, char *argv[])
   try
     {
       // dimension
-      const int          dim      = 3;
-      const unsigned int n_refine = 3;
+      const int          dim      = 2;
+      const unsigned int n_refine = 4;
 
-      dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
-        argc, argv, dealii::numbers::invalid_unsigned_int);
+      if (true)
+        {
+          dealii::Utilities::MPI::MPI_InitFinalize mpi_initialization(
+            argc, argv, dealii::numbers::invalid_unsigned_int);
 
-      PartitionFinder<dim> partition_finder;
-      partition_finder.generate_triangualtion(n_refine);
-      partition_finder.write_mesh("my_triangulation");
+          PartitionFinder<dim> partition_finder;
+          partition_finder.generate_triangualtion(n_refine);
+          partition_finder.write_mesh("my_triangulation");
 
-      /*
-       * Do dome work on process zero only.
-       */
-      //      if (dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD) == 0)
-      {
-        // generate a number of points
-        unsigned int                    N = 1;
-        std::vector<dealii::Point<dim>> test_points(N, dealii::Point<dim>());
-
-        fill_points_randomly(test_points);
-
-        for (auto &p : test_points)
+          /*
+           * Do dome work on process zero only.
+           */
+          //      if (dealii::Utilities::MPI::this_mpi_process(MPI_COMM_WORLD)
+          //      == 0)
           {
-            std::cout << "[Rank "
-                      << dealii::Utilities::MPI::this_mpi_process(
-                           MPI_COMM_WORLD)
-                      << "]   "
-                      << "Point:   " << p << std::endl;
+            // generate a number of points
+            unsigned int                    N = 1;
+            std::vector<dealii::Point<dim>> test_points(N,
+                                                        dealii::Point<dim>());
 
-            partition_finder.find_owner_rank_p4est(p);
+            fill_points_randomly(test_points);
 
-            std::cout << std::endl;
+            for (auto &p : test_points)
+              {
+                //            std::cout << "[Rank "
+                //                      <<
+                //                      dealii::Utilities::MPI::this_mpi_process(
+                //                           MPI_COMM_WORLD)
+                //                      << "]   "
+                //                      << "Point:   " << p << std::endl;
+
+                partition_finder.find_owner_rank_p4est(p);
+
+                //            std::cout << std::endl;
+              }
           }
-      }
+        }
     }
   catch (std::exception &exc)
     {
