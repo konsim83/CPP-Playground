@@ -215,11 +215,16 @@ CoarseMeshFromData<dim>::write_mesh(const std::string &filename)
 
   dealii::GridOut grid_out;
 
-  std::ofstream outstream(filename);
-  grid_out.write_ucd(triangulation, outstream);
+  std::ofstream outstream_ucd(filename + ".inp");
+  grid_out.write_ucd(triangulation, outstream_ucd);
 
-  std::cout << "*** Written to:          " << filename << ".inp" << std::endl
-            << std::endl;
+  std::ofstream outstream_vtu(filename + ".vtu");
+  grid_out.write_vtu(triangulation, outstream_vtu);
+
+  std::cout << "*** Written to:          " << filename << ".inp" << std::endl;
+  std::cout << "*** Written to:          " << filename << ".vtu" << std::endl
+              << std::endl;
+
 }
 
 
