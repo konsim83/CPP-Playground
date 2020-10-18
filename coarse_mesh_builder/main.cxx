@@ -21,6 +21,9 @@
 #include <boost/filesystem.hpp>
 #include <boost/optional.hpp>
 
+// C
+#include <stdio.h>
+
 // STL
 #include <algorithm>
 #include <chrono>
@@ -74,7 +77,7 @@ private:
 
   const double cell_width = 2000; // in [m]
 
-  const bool print_data_file_list = true;
+  const bool print_data_file_list = false;
 };
 
 
@@ -119,30 +122,47 @@ CoarseMeshFromData<dim>::generate()
     it_triangulation_list     = triangulation_list.begin(),
     it_triangulation_list_end = triangulation_list.end();
 
+  double      x, y;
+  std::string delimiter = "_";
+
   /*
    * For each file read the first two values (lower left corner of the cell)
    */
   for (const auto &current_file_name : data_file_list)
     {
-      const std::string path_plus_current_file_name =
-        data_dir_name + "/" + current_file_name;
-      std::ifstream current_file(path_plus_current_file_name);
-      if (current_file.is_open())
+      std::string this_file_name(current_file_name);
+      size_t      pos = 0;
+      std::string token;
+      int         i = 0;
+      while ((pos = this_file_name.find(delimiter)) != std::string::npos)
         {
-          dealii::Point<dim> lower_left_corner;
-          current_file >> lower_left_corner(0) >> lower_left_corner(1);
-          current_file.close();
+          if (i == 1)
+            {
+              token = this_file_name.substr(2, pos - 2);
+              x     = std::stod(token) * 1000;
+              std::cout << i << "  " << token << std::endl;
+              this_file_name.erase(0, pos + delimiter.length());
+            }
+          else if (i == 2)
+            {
+              token = this_file_name.substr(0, pos);
+              y     = std::stod(token) * 1000;
+              std::cout << i << "  " << token << std::endl;
+              this_file_name.erase(0, pos + delimiter.length());
+            }
+          else
+            {
+              token = this_file_name.substr(0, pos);
+              std::cout << i << "  " << token << std::endl;
+              this_file_name.erase(0, pos + delimiter.length());
+            }
+          ++i;
+        }
+      std::cout << "x = " << x << "    y = " << y << std::endl;
 
-          dealii::GridGenerator::hyper_cube(*it_triangulation_list,
-                                            0,
-                                            cell_width);
-          dealii::GridTools::shift(lower_left_corner, *it_triangulation_list);
-        }
-      else
-        {
-          std::cout << "Unable to open file: " << path_plus_current_file_name
-                    << std::endl;
-        }
+      dealii::Point<dim> lower_left_corner(x, y);
+      dealii::GridGenerator::hyper_cube(*it_triangulation_list, 0, cell_width);
+      dealii::GridTools::shift(lower_left_corner, *it_triangulation_list);
 
       // Increase triangulation iterator for each file.
       ++it_triangulation_list;
@@ -173,6 +193,37 @@ CoarseMeshFromData<dim>::generate()
   std::cout << "Triangulations merged into one coarse mesh." << std::endl;
 
   is_initialized = true;
+
+  //  /*
+  //   * For each file read the first two values (lower left corner of the cell)
+  //   */
+  //  for (const auto &current_file_name : data_file_list)
+  //    {
+  //      const std::string path_plus_current_file_name =
+  //        data_dir_name + "/" + current_file_name;
+  //      std::ifstream current_file(path_plus_current_file_name);
+  //      if (current_file.is_open())
+  //        {
+  //          current_file >> x >> y;
+  //          current_file.close();
+  //
+  //          dealii::Point<dim> lower_left_corner(x, y);
+  //          dealii::GridGenerator::hyper_cube(*it_triangulation_list,
+  //                                            0,
+  //                                            cell_width);
+  //          dealii::GridTools::shift(lower_left_corner,
+  //          *it_triangulation_list);
+  //        }
+  //      else
+  //        {
+  //          std::cout << "Unable to open file: " <<
+  //          path_plus_current_file_name
+  //                    << std::endl;
+  //        }
+  //
+  //      // Increase triangulation iterator for each file.
+  //      ++it_triangulation_list;
+  //    }
 }
 
 
@@ -223,8 +274,7 @@ CoarseMeshFromData<dim>::write_mesh(const std::string &filename)
 
   std::cout << "*** Written to:          " << filename << ".inp" << std::endl;
   std::cout << "*** Written to:          " << filename << ".vtu" << std::endl
-              << std::endl;
-
+            << std::endl;
 }
 
 
