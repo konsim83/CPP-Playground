@@ -52,6 +52,9 @@ public:
   generate();
 
   void
+  link_coarse_cell_to_data_file();
+
+  void
   write_mesh(const std::string &filename);
 
 private:
@@ -71,11 +74,15 @@ private:
 
   std::vector<std::string> data_file_list;
 
+  std::map<dealii::CellId, std::string> cell_to_data_file_map;
+
   dealii::Triangulation<dim> triangulation;
 
   bool is_initialized;
 
   const double cell_width = 2000; // in [m]
+
+  const double resolution = 25; // in [m]
 
   const bool print_data_file_list = false;
 };
@@ -140,25 +147,34 @@ CoarseMeshFromData<dim>::generate()
             {
               token = this_file_name.substr(2, pos - 2);
               x     = std::stod(token) * 1000;
+#ifdef DEBUG
               std::cout << i << "  " << token << std::endl;
+#endif
               this_file_name.erase(0, pos + delimiter.length());
             }
           else if (i == 2)
             {
               token = this_file_name.substr(0, pos);
               y     = std::stod(token) * 1000;
+#ifdef DEBUG
               std::cout << i << "  " << token << std::endl;
+#endif
               this_file_name.erase(0, pos + delimiter.length());
             }
           else
             {
               token = this_file_name.substr(0, pos);
+#ifdef DEBUG
               std::cout << i << "  " << token << std::endl;
+#endif
               this_file_name.erase(0, pos + delimiter.length());
             }
           ++i;
         }
+
+#ifdef DEBUG
       std::cout << "x = " << x << "    y = " << y << std::endl;
+#endif
 
       dealii::Point<dim> lower_left_corner(x, y);
       dealii::GridGenerator::hyper_cube(*it_triangulation_list, 0, cell_width);
@@ -224,6 +240,84 @@ CoarseMeshFromData<dim>::generate()
   //      // Increase triangulation iterator for each file.
   //      ++it_triangulation_list;
   //    }
+}
+
+
+template <int dim>
+void
+CoarseMeshFromData<dim>::link_coarse_cell_to_data_file()
+{
+  std::cout << "Iterating through coarse mesh to link to data files..."
+            << std::endl;
+
+  cell_to_data_file_map.clear();
+
+  for (const auto &cell : triangulation.active_cell_iterators())
+    {
+      const dealii::Point<dim> first_vertex = cell->vertex(0);
+      dealii::CellId           current_cell_id(cell->id());
+
+#ifdef DEBUG
+      std::cout << "Cell:   " << current_cell_id.to_string() << "   ";
+      std::printf("First Vertex:   %.2f   %.2f   ",
+                  first_vertex(0),
+                  first_vertex(1));
+#endif
+
+      std::string data_file =
+        "DGM" + dealii::Utilities::int_to_string(resolution, 2) + "_32" +
+        dealii::Utilities::to_string(first_vertex(0) / 1000, 1) + "_" +
+        dealii::Utilities::to_string(first_vertex(1) / 1000, 1) + "_2_FHH.txt";
+
+#ifdef DEBUG
+      std::cout << "data file:   " << data_file << std::endl;
+#endif
+
+      cell_to_data_file_map.emplace(current_cell_id, data_file);
+    }
+
+  for (const auto &cell : triangulation.active_cell_iterators())
+    {
+      typename dealii::Triangulation<dim>::cell_iterator parent_cell;
+
+      const dealii::Point<dim> first_vertex = cell->vertex(0);
+      dealii::CellId           current_cell_id(cell->id());
+#ifdef DEBUG
+      std::cout << "Cell:   " << current_cell_id.to_string() << "   ";
+#endif
+      if (cell->level() > 0)
+        {
+          parent_cell = cell->parent();
+          while (parent_cell->level() > 0)
+            {
+              parent_cell = parent_cell->parent();
+            }
+#ifdef DEBUG
+          std::cout << "Parent cell:   " << (parent_cell->id()).to_string()
+                    << "   ";
+#endif
+        }
+      else
+        {
+          parent_cell = cell;
+#ifdef DEBUG
+          std::cout << "Parent cell:   "
+                    << "-- none --"
+                    << "   ";
+#endif
+        }
+
+#ifdef DEBUG
+      std::printf("First Vertex:   %.2f   %.2f   ",
+                  first_vertex(0),
+                  first_vertex(1));
+#endif
+
+      std::string data_file = cell_to_data_file_map[parent_cell->id()];
+#ifdef DEBUG
+      std::cout << "matching data file:   " << data_file << std::endl;
+#endif
+    }
 }
 
 
@@ -304,6 +398,7 @@ main(int argc, char *argv[])
 
       CoarseMeshFromData<dim> coarse_mesh_from_data(data_dir_name);
       coarse_mesh_from_data.generate();
+      coarse_mesh_from_data.link_coarse_cell_to_data_file();
       coarse_mesh_from_data.write_mesh("HH_triangulation");
 
       /*
