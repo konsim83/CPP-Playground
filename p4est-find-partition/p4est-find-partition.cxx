@@ -710,7 +710,7 @@ main(int argc, char *argv[])
     {
       // dimension
       const int          dim      = 2;
-      const unsigned int n_refine = 3;
+      const unsigned int n_refine = 0;
 
       if (true)
         {

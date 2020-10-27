@@ -82,46 +82,22 @@ private:
 
   const double cell_width = 2000; // in [m]
 
+  /*!
+   * Number of cell layers up to a height of 2000m
+   */
+  const unsigned int n_layers = 4;
+
   const double resolution = 25; // in [m]
 
   const bool print_data_file_list = false;
 };
 
-
-template <int dim>
-CoarseMeshFromData<dim>::CoarseMeshFromData(const std::string &_data_dir_name)
-  : data_dir_name(_data_dir_name)
-  , is_initialized(false)
-{
-  read_directory(data_dir_name, data_file_list);
-}
-
-
-template <int dim>
+/*
+ * Declare and define specializations in 2D
+ */
+template <>
 void
-CoarseMeshFromData<dim>::read_directory(const std::string &       name,
-                                        std::vector<std::string> &file_list)
-{
-  boost::filesystem::path               path(name);
-  boost::filesystem::directory_iterator it_start_path(path);
-  boost::filesystem::directory_iterator it_end_path;
-
-  std::transform(it_start_path,
-                 it_end_path,
-                 std::back_inserter(file_list),
-                 path_leaf_string());
-
-  if (print_data_file_list)
-    {
-      std::copy(file_list.begin(),
-                file_list.end(),
-                std::ostream_iterator<std::string>(std::cout, "\n"));
-    }
-}
-
-template <int dim>
-void
-CoarseMeshFromData<dim>::generate()
+CoarseMeshFromData<2>::generate()
 {
   std::vector<dealii::Triangulation<dim>> triangulation_list(
     data_file_list.size());
@@ -209,37 +185,143 @@ CoarseMeshFromData<dim>::generate()
   std::cout << "Triangulations merged into one coarse mesh." << std::endl;
 
   is_initialized = true;
+}
 
-  //  /*
-  //   * For each file read the first two values (lower left corner of the cell)
-  //   */
-  //  for (const auto &current_file_name : data_file_list)
-  //    {
-  //      const std::string path_plus_current_file_name =
-  //        data_dir_name + "/" + current_file_name;
-  //      std::ifstream current_file(path_plus_current_file_name);
-  //      if (current_file.is_open())
-  //        {
-  //          current_file >> x >> y;
-  //          current_file.close();
-  //
-  //          dealii::Point<dim> lower_left_corner(x, y);
-  //          dealii::GridGenerator::hyper_cube(*it_triangulation_list,
-  //                                            0,
-  //                                            cell_width);
-  //          dealii::GridTools::shift(lower_left_corner,
-  //          *it_triangulation_list);
-  //        }
-  //      else
-  //        {
-  //          std::cout << "Unable to open file: " <<
-  //          path_plus_current_file_name
-  //                    << std::endl;
-  //        }
-  //
-  //      // Increase triangulation iterator for each file.
-  //      ++it_triangulation_list;
-  //    }
+/*
+ * Declare specializations in 3D
+ */
+template <>
+void
+CoarseMeshFromData<3>::generate()
+{
+  std::vector<dealii::Triangulation<dim>> triangulation_list(
+    data_file_list.size() * n_layers);
+  typename std::vector<dealii::Triangulation<dim>>::iterator
+    it_triangulation_list     = triangulation_list.begin(),
+    it_triangulation_list_end = triangulation_list.end();
+
+  double      x, y, z;
+  std::string delimiter = "_";
+
+  /*
+   * For each file read the first two values (lower left corner of the cell)
+   */
+  for (const auto &current_file_name : data_file_list)
+    {
+      std::string this_file_name(current_file_name);
+      size_t      pos = 0;
+      std::string token;
+      int         i = 0;
+      while ((pos = this_file_name.find(delimiter)) != std::string::npos)
+        {
+          if (i == 1)
+            {
+              token = this_file_name.substr(2, pos - 2);
+              x     = std::stod(token) * 1000;
+#ifdef DEBUG
+              std::cout << i << "  " << token << std::endl;
+#endif
+              this_file_name.erase(0, pos + delimiter.length());
+            }
+          else if (i == 2)
+            {
+              token = this_file_name.substr(0, pos);
+              y     = std::stod(token) * 1000;
+#ifdef DEBUG
+              std::cout << i << "  " << token << std::endl;
+#endif
+              this_file_name.erase(0, pos + delimiter.length());
+            }
+          else
+            {
+              token = this_file_name.substr(0, pos);
+#ifdef DEBUG
+              std::cout << i << "  " << token << std::endl;
+#endif
+              this_file_name.erase(0, pos + delimiter.length());
+            }
+          ++i;
+        }
+
+#ifdef DEBUG
+      std::cout << "x = " << x << "    y = " << y << std::endl;
+#endif
+
+      dealii::Point<dim> lower_left_corner(x, y, 0);
+      dealii::Point<dim> upper_right_corner(x, y, cell_width / n_layers);
+      for (unsigned int layer = 0; layer < n_layers; ++layer)
+        {
+          dealii::GridGenerator::hyper_rectangle(*it_triangulation_list,
+                                                 0,
+                                                 cell_width);
+          dealii::Tensor<1, dim> shift_vector(
+            x,
+            y,
+            layer * cell_width / n_layers); // This is corner 0 of the cell
+          dealii::GridTools::shift(shift_vector, *it_triangulation_list);
+        }
+
+      // Increase triangulation iterator for each file.
+      ++it_triangulation_list;
+    }
+
+  /*
+   * We must record a pointer to each triangulation in the list to use the
+   * merge_triangualtions function.
+   */
+  std::vector<const dealii::Triangulation<dim> *> triangulation_ptr_list(
+    data_file_list.size());
+  typename std::vector<const dealii::Triangulation<dim> *>::iterator
+    it_triangulation_ptr_list     = triangulation_ptr_list.begin(),
+    it_triangulation_ptr_list_end = triangulation_ptr_list.end();
+
+  for (const auto &tria : triangulation_list)
+    {
+      *it_triangulation_ptr_list = &tria;
+      ++it_triangulation_ptr_list;
+    }
+
+  dealii::GridGenerator::merge_triangulations(
+    triangulation_ptr_list,
+    triangulation,
+    /* duplicated_vertex_tolerance = */ 1.0e-12,
+    /* copy_manifold_ids =  */ false);
+
+  std::cout << "Triangulations merged into one coarse mesh." << std::endl;
+
+  is_initialized = true;
+}
+
+
+template <int dim>
+CoarseMeshFromData<dim>::CoarseMeshFromData(const std::string &_data_dir_name)
+  : data_dir_name(_data_dir_name)
+  , is_initialized(false)
+{
+  read_directory(data_dir_name, data_file_list);
+}
+
+
+template <int dim>
+void
+CoarseMeshFromData<dim>::read_directory(const std::string &       name,
+                                        std::vector<std::string> &file_list)
+{
+  boost::filesystem::path               path(name);
+  boost::filesystem::directory_iterator it_start_path(path);
+  boost::filesystem::directory_iterator it_end_path;
+
+  std::transform(it_start_path,
+                 it_end_path,
+                 std::back_inserter(file_list),
+                 path_leaf_string());
+
+  if (print_data_file_list)
+    {
+      std::copy(file_list.begin(),
+                file_list.end(),
+                std::ostream_iterator<std::string>(std::cout, "\n"));
+    }
 }
 
 
@@ -252,6 +334,10 @@ CoarseMeshFromData<dim>::link_coarse_cell_to_data_file()
 
   cell_to_data_file_map.clear();
 
+  /*
+   * For each cell we build the associated file from the information of the
+   * first vertex.
+   */
   for (const auto &cell : triangulation.active_cell_iterators())
     {
       const dealii::Point<dim> first_vertex = cell->vertex(0);
