@@ -15,6 +15,7 @@
 #include <deal.II/fe/fe_values.h>
 
 #include <deal.II/grid/grid_generator.h>
+#include <deal.II/grid/grid_tools.h>
 #include <deal.II/grid/tria.h>
 #include <deal.II/grid/tria_accessor.h>
 #include <deal.II/grid/tria_iterator.h>
@@ -70,11 +71,7 @@ namespace Step20
     DoFHandler<dim>             dof_handler;
     AffineConstraints<double>   constraints;
     std::vector<Vector<double>> basis;
-
-    std::vector<bool> orientation;
   };
-
-
 
   template <int dim>
   MixedLaplaceProblem<dim>::MixedLaplaceProblem(const unsigned int degree,
@@ -84,8 +81,7 @@ namespace Step20
     , fe(FE_RaviartThomas<dim>(degree))
     //    , fe(FE_BDM<dim>(degree))
     , dof_handler(triangulation)
-    , basis(GeometryInfo<dim>::faces_per_cell)
-    , orientation(GeometryInfo<dim>::faces_per_cell, true)
+    , basis(fe.n_dofs_per_cell())
   {
     GridGenerator::hyper_shell(triangulation_coarse,
                                Point<dim>(),
@@ -93,6 +89,10 @@ namespace Step20
                                2,
                                /* n_cells */ 6,
                                /* colorize */ false);
+
+    //    GridTools::distort_random(/* factor */ 0.15,
+    //                              triangulation_coarse,
+    //                              /* keep_boundary */ false);
 
     triangulation_coarse.refine_global(n_refine);
 
@@ -102,40 +102,42 @@ namespace Step20
 
     const bool do_plot = true;
 
-    std::map<CellId, std::vector<bool>> cell_wise_face_orientation;
+    if (do_plot)
+      for (const auto &cell : triangulation_coarse.active_cell_iterators())
+        {
+          CellId current_cell_id(cell->id());
 
-    for (const auto &cell : triangulation_coarse.active_cell_iterators())
-      {
-        CellId current_cell_id(cell->id());
-        for (unsigned int face_index = 0;
-             face_index < GeometryInfo<dim>::faces_per_cell;
-             ++face_index)
-          {
-            orientation[face_index] = cell->face_orientation(face_index);
-          }
 
-        cell_wise_face_orientation.emplace(current_cell_id, orientation);
+          std::cout
+            << "CellId = " << current_cell_id << std::endl
+            << "   (index -> face_orientation | face_flip | face_rotation): "
+            << std::endl;
+          for (unsigned int face_index = 0;
+               face_index < GeometryInfo<dim>::faces_per_cell;
+               ++face_index)
+            {
+              //              Triangulation<dim, spacedim>::face_iterator face =
+              //                cell->face(face_index);
+              std::cout << "      {" << face_index << " -> "
+                        << cell->face_orientation(face_index) << " | "
+                        << cell->face_flip(face_index) << " | "
+                        << cell->face_rotation(face_index) << " | "
+                        << "}" << std::endl;
+            } // face_index
+          std::cout << "}" << std::endl;
 
-        for (unsigned int face_index = 0;
-             face_index < GeometryInfo<dim>::faces_per_cell;
-             ++face_index)
-          {
-            const auto &face = cell->face(face_index);
-          } // face_index
 
-        if (do_plot)
-          { // Plot orientation
-            std::cout << "   CellId = " << current_cell_id
-                      << "   orientation: {  ";
-            for (const auto &entry : orientation)
-              {
-                std::cout << entry << "  ";
-              }
-            std::cout << "}" << std::endl;
-          }
-      } // cell
+          std::cout << "   line orientation: {  ";
+          for (unsigned int line_index = 0;
+               line_index < GeometryInfo<dim>::lines_per_cell;
+               ++line_index)
+            {
+              //        	  auto line = cell->line(line_index);
+              std::cout << cell->line_orientation(line_index) << "  ";
+            } // line_index
+          std::cout << "}" << std::endl << std::endl;
+        } // cell
   }
-
 
   template <int dim>
   void
@@ -147,7 +149,6 @@ namespace Step20
       dof_handler.clear();
       constraints.clear();
 
-
       std::vector<Point<dim>> corners(GeometryInfo<dim>::vertices_per_cell);
       for (unsigned int i = 0; i < corners.size(); ++i)
         {
@@ -158,7 +159,7 @@ namespace Step20
                                   corners,
                                   /* colorize faces */ false);
 
-      triangulation.refine_global(3);
+      triangulation.refine_global(2);
     }
 
     dof_handler.distribute_dofs(fe);
@@ -169,7 +170,6 @@ namespace Step20
       constraints.close();
     }
 
-
     /*
      * Reinit and project the shape function
      */
@@ -178,7 +178,7 @@ namespace Step20
                                                          /* degree */ degree);
     QGauss<dim>                        quad_rule(degree + 3);
 
-    for (unsigned int i = 0; i < GeometryInfo<dim>::faces_per_cell; ++i)
+    for (unsigned int i = 0; i < fe.n_dofs_per_cell(); ++i)
       {
         basis[i].reinit(dof_handler.n_dofs());
 
@@ -192,6 +192,46 @@ namespace Step20
   }
 
 
+  //  template <int dim>
+  //  void
+  //  MixedLaplaceProblem<dim>::output_results(
+  //    typename Triangulation<dim>::cell_iterator &cell)
+  //  {
+  //    const std::vector<std::string> solution_name(dim, "u");
+  //    const
+  //    std::vector<DataComponentInterpretation::DataComponentInterpretation>
+  //      interpretation(dim,
+  //                     DataComponentInterpretation::component_is_part_of_vector);
+  //
+  //    std::cout << "Writing basis in cell " << cell->id().to_string()
+  //              << std::endl;
+  //
+  //    for (unsigned int dof_index = 0; dof_index < fe.n_dofs_per_cell();
+  //         ++dof_index)
+  //      {
+  //        DataOut<dim> data_out;
+  //        data_out.attach_dof_handler(dof_handler);
+  //
+  //        data_out.add_data_vector(basis[dof_index],
+  //                                 solution_name,
+  //                                 DataOut<dim>::type_dof_data,
+  //                                 interpretation);
+  //
+  //        data_out.build_patches(degree + 1);
+  //
+  //        std::string filename = "basis_cell-";
+  //        filename += cell->id().to_string();
+  //        filename += "_" + Utilities::int_to_string(dof_index, 3);
+  //
+  //        std::ofstream output(filename + ".vtu");
+  //        data_out.write_vtu(output);
+  //
+  //        std::cout << "   DoF index: " << dof_index
+  //                  << "   filename: " << filename << std::endl;
+  //      }
+  //  }
+
+
   template <int dim>
   void
   MixedLaplaceProblem<dim>::output_results(
@@ -200,10 +240,10 @@ namespace Step20
     DataOut<dim> data_out;
     data_out.attach_dof_handler(dof_handler);
 
-    for (unsigned int i = 0; i < GeometryInfo<dim>::faces_per_cell; ++i)
+    for (unsigned int i = 0; i < fe.n_dofs_per_cell(); ++i)
       {
         const std::vector<std::string> solution_name(
-          dim, std::string("u") + Utilities::int_to_string(i, 1));
+          dim, std::string("u") + Utilities::int_to_string(i, 3));
         const std::vector<
           DataComponentInterpretation::DataComponentInterpretation>
           interpretation(
@@ -243,9 +283,9 @@ main(int argc, char *argv[])
   // Very simple way of input handling.
   if (argc < 2)
     {
-      std::cout
-        << "You must provide an initial number of global refinements \"-n n_refine\""
-        << std::endl;
+      std::cout << "You must provide an initial number of global refinements "
+                   "\"-n n_refine\""
+                << std::endl;
       exit(1);
     }
 
@@ -306,7 +346,7 @@ main(int argc, char *argv[])
     {
       using namespace Step20;
 
-      const unsigned int fe_degree = 0;
+      const unsigned int fe_degree = 1;
       const int          dim       = 3;
 
       {

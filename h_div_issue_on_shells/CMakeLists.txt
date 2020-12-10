@@ -1,4 +1,3 @@
-# Set the name of the project and target:
 SET(TARGET "issue")
 
 include_directories(${CMAKE_SOURCE_DIR})

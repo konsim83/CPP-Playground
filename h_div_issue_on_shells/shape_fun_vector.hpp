@@ -32,7 +32,6 @@ namespace ShapeFun
 {
   using namespace dealii;
 
-
   template <int dim>
   class ShapeFunctionVector : public Function<dim>
   {
@@ -70,6 +69,8 @@ namespace ShapeFun
     const bool verbose;
 
     double orientation_corrector;
+
+    unsigned int n_face_dofs;
   };
 
   template <int dim>
@@ -92,16 +93,25 @@ namespace ShapeFun
     Assert((!fe_ptr->is_primitive()), FETools::ExcInvalidFE());
     Assert(fe_ptr->n_blocks() == 1,
            ExcDimensionMismatch(1, fe_ptr->n_blocks()));
-    if (verbose)
+
+    n_face_dofs = 0;
+
+    for (unsigned int face_index = 0;
+         face_index < GeometryInfo<dim>::faces_per_cell;
+         ++face_index)
       {
-        std::cout << "\n		Constructed vector shape function for   "
-                  << fe_ptr->get_name() << "   on cell   [";
-        for (unsigned int i = 0; i < (std::pow(2, dim) - 1); ++i)
-          {
-            std::cout << cell->vertex(i) << ", \n";
-          }
-        std::cout << cell->vertex(std::pow(2, dim) - 1) << "]\n" << std::endl;
+        n_face_dofs += fe_ptr->n_dofs_per_face(face_index);
       }
+
+    //  if (verbose) {
+    //    std::cout << "\n		Constructed vector shape function for   "
+    //              << fe_ptr->get_name() << "   on cell   [";
+    //    for (unsigned int i = 0; i < (std::pow(2, dim) - 1); ++i) {
+    //      std::cout << cell->vertex(i) << ", \n";
+    //    }
+    //    std::cout << cell->vertex(std::pow(2, dim) - 1) << "]\n" <<
+    //    std::endl;
+    //  }
   }
 
   template <int dim>
@@ -110,8 +120,23 @@ namespace ShapeFun
     const typename Triangulation<dim>::cell_iterator &cell)
   {
     current_cell_ptr = &cell;
-    orientation_corrector(
-      (cell->face_orientation(shape_fun_index) ? 1.0 : -1.0));
+    if (shape_fun_index < n_face_dofs)
+      {
+        /*
+         * This is integer division
+         */
+        unsigned int face_index_from_shape_index =
+          shape_fun_index / (fe_ptr->n_dofs_per_face(0));
+
+        orientation_corrector =
+          (*current_cell_ptr)->face_orientation(face_index_from_shape_index) ?
+            1.0 :
+            -1.0;
+      }
+    else
+      {
+        orientation_corrector = 1.0;
+      }
   }
 
   template <int dim>
@@ -119,8 +144,23 @@ namespace ShapeFun
   ShapeFunctionVector<dim>::set_shape_fun_index(unsigned int index)
   {
     shape_fun_index = index;
-    orientation_corrector =
-      ((*current_cell_ptr)->face_orientation(shape_fun_index) ? 1.0 : -1.0);
+    if (shape_fun_index < n_face_dofs)
+      {
+        /*
+         * This is integer division
+         */
+        unsigned int face_index_from_shape_index =
+          shape_fun_index / (fe_ptr->n_dofs_per_face(0));
+
+        orientation_corrector =
+          (*current_cell_ptr)->face_orientation(face_index_from_shape_index) ?
+            1.0 :
+            -1.0;
+      }
+    else
+      {
+        orientation_corrector = 1.0;
+      }
   }
 
   template <int dim>
@@ -136,7 +176,8 @@ namespace ShapeFun
     Quadrature<dim> fake_quadrature(point_on_ref_cell);
 
     // Update he fe_values object
-    FEValues<dim> fe_values(*fe_ptr,
+    FEValues<dim> fe_values(mapping,
+                            *fe_ptr,
                             fake_quadrature,
                             update_values | update_quadrature_points);
 
@@ -174,7 +215,8 @@ namespace ShapeFun
     Quadrature<dim> fake_quadrature(points_on_ref_cell);
 
     // Update he fe_values object
-    FEValues<dim> fe_values(*fe_ptr,
+    FEValues<dim> fe_values(mapping,
+                            *fe_ptr,
                             fake_quadrature,
                             update_values | update_quadrature_points);
 
