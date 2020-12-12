@@ -85,7 +85,7 @@ namespace ShapeFun
     , mapping(1)
     , current_cell_ptr(&cell)
     , verbose(verbose)
-    , orientation_corrector((cell->face_orientation(0) ? 1.0 : -1.0))
+    , orientation_corrector((cell->face_orientation(0) ? 1.0 : 1.0))
   {
     // If element is primitive it is invalid.
     // Also there must not be more than one block.
@@ -94,14 +94,7 @@ namespace ShapeFun
     Assert(fe_ptr->n_blocks() == 1,
            ExcDimensionMismatch(1, fe_ptr->n_blocks()));
 
-    n_face_dofs = 0;
-
-    for (unsigned int face_index = 0;
-         face_index < GeometryInfo<dim>::faces_per_cell;
-         ++face_index)
-      {
-        n_face_dofs += fe_ptr->n_dofs_per_face(face_index);
-      }
+    n_face_dofs = GeometryInfo<dim>::faces_per_cell * fe_ptr->n_dofs_per_face();
 
     //  if (verbose) {
     //    std::cout << "\n		Constructed vector shape function for   "
@@ -131,7 +124,7 @@ namespace ShapeFun
         orientation_corrector =
           (*current_cell_ptr)->face_orientation(face_index_from_shape_index) ?
             1.0 :
-            -1.0;
+            1.0;
       }
     else
       {
@@ -155,7 +148,7 @@ namespace ShapeFun
         orientation_corrector =
           (*current_cell_ptr)->face_orientation(face_index_from_shape_index) ?
             1.0 :
-            -1.0;
+            1.0;
       }
     else
       {

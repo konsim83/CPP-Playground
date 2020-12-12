@@ -137,8 +137,8 @@ namespace Step20
                                                 const bool         _natural_bc,
                                                 const bool _problematic_domain)
     : degree(degree)
-    //    , fe(FE_RaviartThomas<dim>(degree), 1, FE_DGQ<dim>(degree), 1)
-    , fe(FE_BDM<dim>(degree + 1), 1, FE_DGP<dim>(degree), 1)
+    , fe(FE_RaviartThomas<dim>(degree), 1, FE_DGQ<dim>(degree), 1)
+    //    , fe(FE_BDM<dim>(degree + 1), 1, FE_DGP<dim>(degree), 1)
     , dof_handler(triangulation)
     , n_refine(_n_refine)
     , natural_bc(_natural_bc)

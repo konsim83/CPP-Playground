@@ -61,6 +61,17 @@ namespace Step20
     void
     output_results(typename Triangulation<dim>::cell_iterator &cell);
 
+    /*
+     * If we have a shape function on a face that is flipped then also the
+     * enumeration of dofs on that face is flipped. This function checks if a
+     * dof_index is an index of a shape function on a flipped face. In this case
+     * it maps this index to a corrected index such that a conformity condition
+     * across faces is met. maps a "standard order"
+     */
+    unsigned int
+    flip_dof_order_on_face(typename Triangulation<dim>::cell_iterator &cell,
+                           const unsigned int shape_fun_index);
+
     Triangulation<dim> triangulation_coarse;
 
     const unsigned int degree;
@@ -71,6 +82,8 @@ namespace Step20
     DoFHandler<dim>             dof_handler;
     AffineConstraints<double>   constraints;
     std::vector<Vector<double>> basis;
+
+    unsigned int n_face_dofs;
   };
 
   template <int dim>
@@ -83,6 +96,19 @@ namespace Step20
     , dof_handler(triangulation)
     , basis(fe.n_dofs_per_cell())
   {
+    n_face_dofs = 0;
+
+    for (unsigned int face_index = 0;
+         face_index < GeometryInfo<dim>::faces_per_cell;
+         ++face_index)
+      {
+        n_face_dofs += fe.n_dofs_per_face(face_index);
+      }
+
+    ///////////////////////////////////
+    ///////////////////////////////////
+    ///////////////////////////////////
+
     GridGenerator::hyper_shell(triangulation_coarse,
                                Point<dim>(),
                                1,
@@ -187,8 +213,6 @@ namespace Step20
         VectorTools::project(
           dof_handler, constraints, quad_rule, shape_function_RT, basis[i]);
       }
-
-    output_results(cell);
   }
 
 
@@ -233,6 +257,59 @@ namespace Step20
 
 
   template <int dim>
+  unsigned int
+  MixedLaplaceProblem<dim>::flip_dof_order_on_face(
+    typename Triangulation<dim>::cell_iterator &cell,
+    const unsigned int                          shape_fun_index)
+  {
+    if (shape_fun_index < n_face_dofs)
+      {
+        /*
+         * This is integer division
+         */
+        unsigned int face_index_from_shape_index =
+          shape_fun_index / (fe.n_dofs_per_face());
+
+        if (!cell->face_orientation(face_index_from_shape_index))
+          {
+            if (shape_fun_index %
+                  fe.n_dofs_per_face(face_index_from_shape_index) ==
+                0)
+              {
+                return shape_fun_index;
+              }
+            else if (shape_fun_index %
+                       fe.n_dofs_per_face(face_index_from_shape_index) ==
+                     1)
+              {
+                return shape_fun_index + 1;
+              }
+            else if (shape_fun_index %
+                       fe.n_dofs_per_face(face_index_from_shape_index) ==
+                     2)
+              {
+                return shape_fun_index - 1;
+              }
+            else if (shape_fun_index %
+                       fe.n_dofs_per_face(face_index_from_shape_index) ==
+                     3)
+              {
+                return shape_fun_index;
+              }
+          }
+        else
+          {
+            return shape_fun_index;
+          }
+      }
+    else
+      {
+        return shape_fun_index;
+      }
+  }
+
+
+  template <int dim>
   void
   MixedLaplaceProblem<dim>::output_results(
     typename Triangulation<dim>::cell_iterator &cell)
@@ -240,16 +317,23 @@ namespace Step20
     DataOut<dim> data_out;
     data_out.attach_dof_handler(dof_handler);
 
-    for (unsigned int i = 0; i < fe.n_dofs_per_cell(); ++i)
+    std::cout << "Cell Id: " << cell->id().to_string() << std::endl;
+
+    for (unsigned int dof_index = 0; dof_index < fe.n_dofs_per_cell();
+         ++dof_index)
       {
+        //        std::cout << "   " << dof_index << " ---> "
+        //                  << flip_dof_order_on_face(cell, dof_index) <<
+        //                  std::endl;
+
         const std::vector<std::string> solution_name(
-          dim, std::string("u") + Utilities::int_to_string(i, 3));
+          dim, std::string("u") + Utilities::int_to_string(dof_index, 3));
         const std::vector<
           DataComponentInterpretation::DataComponentInterpretation>
           interpretation(
             dim, DataComponentInterpretation::component_is_part_of_vector);
 
-        data_out.add_data_vector(basis[i],
+        data_out.add_data_vector(basis[dof_index],
                                  solution_name,
                                  DataOut<dim>::type_dof_data,
                                  interpretation);
@@ -264,6 +348,7 @@ namespace Step20
     data_out.write_vtu(output);
   }
 
+
   template <int dim>
   void
   MixedLaplaceProblem<dim>::run()
@@ -276,6 +361,12 @@ namespace Step20
       }
   }
 } // namespace Step20
+
+
+////////////////////////////////////
+////////////////////////////////////
+////////////////////////////////////
+
 
 int
 main(int argc, char *argv[])
