@@ -260,52 +260,53 @@ namespace Step20
   unsigned int
   MixedLaplaceProblem<dim>::flip_dof_order_on_face(
     typename Triangulation<dim>::cell_iterator &cell,
-    const unsigned int                          shape_fun_index)
+    const unsigned int                          dof_index)
   {
-    if (shape_fun_index < n_face_dofs)
+    unsigned int new_dof_index = dof_index;
+
+    const unsigned int n_dofs_per_face = fe.n_dofs_per_face();
+
+    const unsigned int n_face_dofs =
+      GeometryInfo<dim>::faces_per_cell * n_dofs_per_face;
+
+    /*
+     * Assume that all face dofs come before volume dofs.
+     */
+    if (dof_index < n_face_dofs)
       {
         /*
-         * This is integer division
+         * Find the face belonging to this dof. This is integer
+         division.
          */
         unsigned int face_index_from_shape_index =
-          shape_fun_index / (fe.n_dofs_per_face());
+          dof_index / (n_dofs_per_face);
 
+        /*
+         * If face does not have standard orientation permute dofs
+         */
+        //        if ((face_index_from_shape_index % 2) == 0)
         if (!cell->face_orientation(face_index_from_shape_index))
           {
-            if (shape_fun_index %
-                  fe.n_dofs_per_face(face_index_from_shape_index) ==
-                0)
+            if (dof_index % n_dofs_per_face == 0)
               {
-                return shape_fun_index;
+                new_dof_index = dof_index;
               }
-            else if (shape_fun_index %
-                       fe.n_dofs_per_face(face_index_from_shape_index) ==
-                     1)
+            else if (dof_index % n_dofs_per_face == 1)
               {
-                return shape_fun_index + 1;
+                new_dof_index = dof_index + 1;
               }
-            else if (shape_fun_index %
-                       fe.n_dofs_per_face(face_index_from_shape_index) ==
-                     2)
+            else if (dof_index % n_dofs_per_face == 2)
               {
-                return shape_fun_index - 1;
+                new_dof_index = dof_index - 1;
               }
-            else if (shape_fun_index %
-                       fe.n_dofs_per_face(face_index_from_shape_index) ==
-                     3)
+            else if (dof_index % n_dofs_per_face == 3)
               {
-                return shape_fun_index;
+                new_dof_index = dof_index;
               }
           }
-        else
-          {
-            return shape_fun_index;
-          }
       }
-    else
-      {
-        return shape_fun_index;
-      }
+
+    return new_dof_index;
   }
 
 
@@ -319,12 +320,15 @@ namespace Step20
 
     std::cout << "Cell Id: " << cell->id().to_string() << std::endl;
 
-    for (unsigned int dof_index = 0; dof_index < fe.n_dofs_per_cell();
-         ++dof_index)
+    for (unsigned int dof_index_in = 0; dof_index_in < fe.n_dofs_per_cell();
+         ++dof_index_in)
       {
-        //        std::cout << "   " << dof_index << " ---> "
-        //                  << flip_dof_order_on_face(cell, dof_index) <<
-        //                  std::endl;
+        const unsigned int dof_index =
+          flip_dof_order_on_face(cell, dof_index_in);
+
+        if ((dof_index_in - flip_dof_order_on_face(cell, dof_index_in)) != 0)
+          std::cout << "   " << dof_index_in << " ---> "
+                    << flip_dof_order_on_face(cell, dof_index_in) << std::endl;
 
         const std::vector<std::string> solution_name(
           dim, std::string("u") + Utilities::int_to_string(dof_index, 3));
