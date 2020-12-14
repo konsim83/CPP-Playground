@@ -70,7 +70,8 @@ namespace Step20
      */
     unsigned int
     flip_dof_order_on_face(typename Triangulation<dim>::cell_iterator &cell,
-                           const unsigned int shape_fun_index);
+                           const unsigned int shape_fun_index,
+                           const unsigned int order);
 
     Triangulation<dim> triangulation_coarse;
 
@@ -260,7 +261,8 @@ namespace Step20
   unsigned int
   MixedLaplaceProblem<dim>::flip_dof_order_on_face(
     typename Triangulation<dim>::cell_iterator &cell,
-    const unsigned int                          dof_index)
+    const unsigned int                          dof_index,
+    const unsigned int                          degree)
   {
     unsigned int new_dof_index = dof_index;
 
@@ -275,8 +277,7 @@ namespace Step20
     if (dof_index < n_face_dofs)
       {
         /*
-         * Find the face belonging to this dof. This is integer
-         division.
+         * Find the face belonging to this dof. This is integer division.
          */
         unsigned int face_index_from_shape_index =
           dof_index / (n_dofs_per_face);
@@ -284,27 +285,68 @@ namespace Step20
         /*
          * If face does not have standard orientation permute dofs
          */
-        //        if ((face_index_from_shape_index % 2) == 0)
         if (!cell->face_orientation(face_index_from_shape_index))
           {
-            if (dof_index % n_dofs_per_face == 0)
+            if (degree == 2)
               {
-                new_dof_index = dof_index;
-              }
-            else if (dof_index % n_dofs_per_face == 1)
+                if (dof_index % n_dofs_per_face == 0)
+                  {
+                    new_dof_index = dof_index;
+                  }
+                else if (dof_index % n_dofs_per_face == 1)
+                  {
+                    new_dof_index = dof_index + 1;
+                  }
+                else if (dof_index % n_dofs_per_face == 2)
+                  {
+                    new_dof_index = dof_index - 1;
+                  }
+                else if (dof_index % n_dofs_per_face == 3)
+                  {
+                    new_dof_index = dof_index;
+                  }
+              } // degree == 2
+            else if (degree == 3)
               {
-                new_dof_index = dof_index + 1;
-              }
-            else if (dof_index % n_dofs_per_face == 2)
-              {
-                new_dof_index = dof_index - 1;
-              }
-            else if (dof_index % n_dofs_per_face == 3)
-              {
-                new_dof_index = dof_index;
-              }
-          }
-      }
+                if (dof_index % n_dofs_per_face == 0)
+                  {
+                    new_dof_index = dof_index;
+                  }
+                else if (dof_index % n_dofs_per_face == 1)
+                  {
+                    new_dof_index = dof_index + 2;
+                  }
+                else if (dof_index % n_dofs_per_face == 2)
+                  {
+                    new_dof_index = dof_index + 4;
+                  }
+                else if (dof_index % n_dofs_per_face == 3)
+                  {
+                    new_dof_index = dof_index - 2;
+                  }
+                else if (dof_index % n_dofs_per_face == 4)
+                  {
+                    new_dof_index = dof_index;
+                  }
+                else if (dof_index % n_dofs_per_face == 5)
+                  {
+                    new_dof_index = dof_index + 2;
+                  }
+                else if (dof_index % n_dofs_per_face == 6)
+                  {
+                    new_dof_index = dof_index - 4;
+                  }
+                else if (dof_index % n_dofs_per_face == 7)
+                  {
+                    new_dof_index = dof_index - 2;
+                  }
+                else if (dof_index % n_dofs_per_face == 8)
+                  {
+                    new_dof_index = dof_index;
+                  }
+              } // degree == 3
+          }     // if face flipped
+      }         // if dof_index < n_face_dofs
 
     return new_dof_index;
   }
@@ -315,26 +357,30 @@ namespace Step20
   MixedLaplaceProblem<dim>::output_results(
     typename Triangulation<dim>::cell_iterator &cell)
   {
-    const bool flip = false;
+    const bool flip = true;
 
     DataOut<dim> data_out;
     data_out.attach_dof_handler(dof_handler);
 
     if (flip)
-      std::cout << "Cell Id: " << cell->id().to_string() << std::endl;
+      {
+        std::cout << "FE degree: " << fe.degree << std::endl;
+        std::cout << "Cell Id: " << cell->id().to_string() << std::endl;
+      }
 
     for (unsigned int dof_index_in = 0; dof_index_in < fe.n_dofs_per_cell();
          ++dof_index_in)
       {
         const unsigned int dof_index =
-          (flip ? flip_dof_order_on_face(cell, dof_index_in) : dof_index_in);
+          (flip ? flip_dof_order_on_face(cell, dof_index_in, fe.degree) :
+                  dof_index_in);
 
         if (flip)
           {
-            if ((dof_index_in - flip_dof_order_on_face(cell, dof_index_in)) !=
-                0)
+            if ((dof_index_in -
+                 flip_dof_order_on_face(cell, dof_index_in, fe.degree)) != 0)
               std::cout << "   " << dof_index_in << " ---> "
-                        << flip_dof_order_on_face(cell, dof_index_in)
+                        << flip_dof_order_on_face(cell, dof_index_in, fe.degree)
                         << std::endl;
           }
 
