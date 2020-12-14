@@ -315,23 +315,31 @@ namespace Step20
   MixedLaplaceProblem<dim>::output_results(
     typename Triangulation<dim>::cell_iterator &cell)
   {
+    const bool flip = false;
+
     DataOut<dim> data_out;
     data_out.attach_dof_handler(dof_handler);
 
-    std::cout << "Cell Id: " << cell->id().to_string() << std::endl;
+    if (flip)
+      std::cout << "Cell Id: " << cell->id().to_string() << std::endl;
 
     for (unsigned int dof_index_in = 0; dof_index_in < fe.n_dofs_per_cell();
          ++dof_index_in)
       {
         const unsigned int dof_index =
-          flip_dof_order_on_face(cell, dof_index_in);
+          (flip ? flip_dof_order_on_face(cell, dof_index_in) : dof_index_in);
 
-        if ((dof_index_in - flip_dof_order_on_face(cell, dof_index_in)) != 0)
-          std::cout << "   " << dof_index_in << " ---> "
-                    << flip_dof_order_on_face(cell, dof_index_in) << std::endl;
+        if (flip)
+          {
+            if ((dof_index_in - flip_dof_order_on_face(cell, dof_index_in)) !=
+                0)
+              std::cout << "   " << dof_index_in << " ---> "
+                        << flip_dof_order_on_face(cell, dof_index_in)
+                        << std::endl;
+          }
 
         const std::vector<std::string> solution_name(
-          dim, std::string("u") + Utilities::int_to_string(dof_index, 3));
+          dim, std::string("u") + Utilities::int_to_string(dof_index_in, 3));
         const std::vector<
           DataComponentInterpretation::DataComponentInterpretation>
           interpretation(
@@ -441,7 +449,7 @@ main(int argc, char *argv[])
     {
       using namespace Step20;
 
-      const unsigned int fe_degree = 1;
+      const unsigned int fe_degree = 2;
       const int          dim       = 3;
 
       {

@@ -95,16 +95,6 @@ namespace ShapeFun
            ExcDimensionMismatch(1, fe_ptr->n_blocks()));
 
     n_face_dofs = GeometryInfo<dim>::faces_per_cell * fe_ptr->n_dofs_per_face();
-
-    //  if (verbose) {
-    //    std::cout << "\n		Constructed vector shape function for   "
-    //              << fe_ptr->get_name() << "   on cell   [";
-    //    for (unsigned int i = 0; i < (std::pow(2, dim) - 1); ++i) {
-    //      std::cout << cell->vertex(i) << ", \n";
-    //    }
-    //    std::cout << cell->vertex(std::pow(2, dim) - 1) << "]\n" <<
-    //    std::endl;
-    //  }
   }
 
   template <int dim>
@@ -113,23 +103,6 @@ namespace ShapeFun
     const typename Triangulation<dim>::cell_iterator &cell)
   {
     current_cell_ptr = &cell;
-    if (shape_fun_index < n_face_dofs)
-      {
-        /*
-         * This is integer division
-         */
-        unsigned int face_index_from_shape_index =
-          shape_fun_index / (fe_ptr->n_dofs_per_face(0));
-
-        orientation_corrector =
-          (*current_cell_ptr)->face_orientation(face_index_from_shape_index) ?
-            1.0 :
-            1.0;
-      }
-    else
-      {
-        orientation_corrector = 1.0;
-      }
   }
 
   template <int dim>
@@ -137,23 +110,6 @@ namespace ShapeFun
   ShapeFunctionVector<dim>::set_shape_fun_index(unsigned int index)
   {
     shape_fun_index = index;
-    if (shape_fun_index < n_face_dofs)
-      {
-        /*
-         * This is integer division
-         */
-        unsigned int face_index_from_shape_index =
-          shape_fun_index / (fe_ptr->n_dofs_per_face(0));
-
-        orientation_corrector =
-          (*current_cell_ptr)->face_orientation(face_index_from_shape_index) ?
-            1.0 :
-            1.0;
-      }
-    else
-      {
-        orientation_corrector = 1.0;
-      }
   }
 
   template <int dim>
@@ -178,8 +134,7 @@ namespace ShapeFun
 
     for (unsigned int i = 0; i < dim; ++i)
       {
-        value[i] = orientation_corrector *
-                   fe_values.shape_value_component(shape_fun_index,
+        value[i] = fe_values.shape_value_component(shape_fun_index,
                                                    /* q_index */ 0,
                                                    i);
       }
@@ -220,7 +175,6 @@ namespace ShapeFun
         for (unsigned int component = 0; component < dim; ++component)
           {
             values.at(i)[component] =
-              orientation_corrector *
               fe_values.shape_value_component(shape_fun_index,
                                               /* q_index */ i,
                                               component);

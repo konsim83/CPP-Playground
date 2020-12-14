@@ -85,11 +85,6 @@ namespace Step20
     void
     make_projection_grid_and_dofs();
 
-    unsigned int
-    permute_shape_dof(
-      const typename DoFHandler<dim>::active_cell_iterator &cell,
-      const unsigned int                                    dof_index);
-
     void
     assemble_system();
 
@@ -423,65 +418,9 @@ namespace Step20
 
 
   template <int dim>
-  unsigned int
-  MixedLaplaceProblem<dim>::permute_shape_dof(
-    const typename DoFHandler<dim>::active_cell_iterator &cell,
-    const unsigned int                                    dof_index)
-  {
-    unsigned int new_dof_index = dof_index;
-
-    const unsigned int n_dofs_per_face = fe.n_dofs_per_face();
-
-    const unsigned int n_face_dofs =
-      GeometryInfo<dim>::faces_per_cell * n_dofs_per_face;
-
-    /*
-     * Assume that all face dofs come before volume dofs.
-     */
-    if (dof_index < n_face_dofs)
-      {
-        /*
-         * Find the face belonging to this dof. This is integer
-         division.
-         */
-        unsigned int face_index_from_shape_index =
-          dof_index / (n_dofs_per_face);
-
-        /*
-         * If face does not have standard orientation permute dofs
-         */
-        if ((face_index_from_shape_index % 2) == 0)
-          if (!cell->face_orientation(face_index_from_shape_index))
-            {
-              if (dof_index % n_dofs_per_face == 0)
-                {
-                  new_dof_index = dof_index;
-                }
-              else if (dof_index % n_dofs_per_face == 1)
-                {
-                  new_dof_index = dof_index + 1;
-                }
-              else if (dof_index % n_dofs_per_face == 2)
-                {
-                  new_dof_index = dof_index - 1;
-                }
-              else if (dof_index % n_dofs_per_face == 3)
-                {
-                  new_dof_index = dof_index;
-                }
-            }
-      }
-
-    return new_dof_index;
-  }
-
-
-  template <int dim>
   void
   MixedLaplaceProblem<dim>::assemble_system()
   {
-    const bool flip = true;
-
     QGauss<dim>     quadrature_formula(degree + 2);
     QGauss<dim - 1> face_quadrature_formula(degree + 2);
 
@@ -528,28 +467,14 @@ namespace Step20
                              k_inverse_values);
 
         for (unsigned int q = 0; q < n_q_points; ++q)
-          for (unsigned int dof_index_i = 0; dof_index_i < dofs_per_cell;
-               ++dof_index_i)
+          for (unsigned int i = 0; i < dofs_per_cell; ++i)
             {
-              unsigned int i;
-              if (flip)
-                i = permute_shape_dof(cell, dof_index_i);
-              else
-                i = dof_index_i;
-
               const Tensor<1, dim> phi_i_u = fe_values[velocities].value(i, q);
               const double div_phi_i_u = fe_values[velocities].divergence(i, q);
               const double phi_i_p     = fe_values[pressure].value(i, q);
 
-              for (unsigned int dof_index_j = 0; dof_index_j < dofs_per_cell;
-                   ++dof_index_j)
+              for (unsigned int j = 0; j < dofs_per_cell; ++j)
                 {
-                  unsigned int j;
-                  if (flip)
-                    j = permute_shape_dof(cell, dof_index_j);
-                  else
-                    j = dof_index_j;
-
                   const Tensor<1, dim> phi_j_u =
                     fe_values[velocities].value(j, q);
                   const double div_phi_j_u =
