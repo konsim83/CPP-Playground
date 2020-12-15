@@ -600,7 +600,7 @@ main(int argc, char *argv[])
 
 
       const unsigned int n_refine  = 0; // refines the test domain itself
-      const unsigned int fe_degree = 0;
+      const unsigned int fe_degree = 1;
 
       //      FE_BDM<dim> fe(fe_degree);
       //      FE_RaviartThomas<dim> fe(fe_degree);
