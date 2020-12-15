@@ -38,6 +38,7 @@
 #include <fstream>
 #include <iostream>
 #include <map>
+#include <memory>
 #include <vector>
 
 namespace Step20
@@ -45,10 +46,12 @@ namespace Step20
   using namespace dealii;
 
   template <int dim>
-  class MixedLaplaceProblem
+  class ShapeFunctionWriter
   {
   public:
-    MixedLaplaceProblem(const unsigned int degree, const unsigned int n_refine);
+    ShapeFunctionWriter(const FiniteElement<dim> &fe,
+                        const unsigned int        n_refine,
+                        const unsigned int        n_refine_each_cell);
 
     void
     run();
@@ -77,34 +80,34 @@ namespace Step20
 
     const unsigned int degree;
     const unsigned int n_refine;
+    const unsigned int n_refine_each_cell;
 
-    FE_RaviartThomas<dim>       fe;
-    Triangulation<dim>          triangulation;
-    DoFHandler<dim>             dof_handler;
-    AffineConstraints<double>   constraints;
-    std::vector<Vector<double>> basis;
+    SmartPointer<const FiniteElement<dim>> fe_ptr;
+    Triangulation<dim>                     triangulation;
+    DoFHandler<dim>                        dof_handler;
+    AffineConstraints<double>              constraints;
+    std::vector<Vector<double>>            basis;
 
     unsigned int n_face_dofs;
   };
 
   template <int dim>
-  MixedLaplaceProblem<dim>::MixedLaplaceProblem(const unsigned int degree,
-                                                const unsigned int n_refine)
-    : degree(degree)
+  ShapeFunctionWriter<dim>::ShapeFunctionWriter(
+    const FiniteElement<dim> &_fe,
+    const unsigned int        n_refine,
+    const unsigned int        n_refine_each_cell)
+    : degree(_fe.degree)
     , n_refine(n_refine)
-    , fe(FE_RaviartThomas<dim>(degree))
-    //    , fe(FE_BDM<dim>(degree))
+    , n_refine_each_cell(n_refine_each_cell)
+    , fe_ptr(&_fe)
     , dof_handler(triangulation)
-    , basis(fe.n_dofs_per_cell())
+    , basis((*fe_ptr).n_dofs_per_cell())
   {
-    n_face_dofs = 0;
-
-    for (unsigned int face_index = 0;
-         face_index < GeometryInfo<dim>::faces_per_cell;
-         ++face_index)
-      {
-        n_face_dofs += fe.n_dofs_per_face(face_index);
-      }
+    /*
+     * Assume all faces have the same number of dofs
+     */
+    n_face_dofs =
+      (*fe_ptr).n_dofs_per_face() * GeometryInfo<dim>::faces_per_cell;
 
     ///////////////////////////////////
     ///////////////////////////////////
@@ -123,52 +126,61 @@ namespace Step20
 
     triangulation_coarse.refine_global(n_refine);
 
-    /*
-     * Annottate correction
-     */
+    ///////////////////////////////////
+    ///////////////////////////////////
+    ///////////////////////////////////
 
     const bool do_plot = true;
 
     if (do_plot)
-      for (const auto &cell : triangulation_coarse.active_cell_iterators())
-        {
-          CellId current_cell_id(cell->id());
+      {
+        std::cout << "*********************************************************"
+                  << std::endl
+                  << "Writing finite element shape functions for   "
+                  << (*fe_ptr).get_name()
+                  << "   elements of (polynomial) degree   " << (*fe_ptr).degree
+                  << std::endl
+                  << std::endl;
+
+        for (const auto &cell : triangulation_coarse.active_cell_iterators())
+          {
+            CellId current_cell_id(cell->id());
 
 
-          std::cout
-            << "CellId = " << current_cell_id << std::endl
-            << "   (index -> face_orientation | face_flip | face_rotation): "
-            << std::endl;
-          for (unsigned int face_index = 0;
-               face_index < GeometryInfo<dim>::faces_per_cell;
-               ++face_index)
-            {
-              //              Triangulation<dim, spacedim>::face_iterator face =
-              //                cell->face(face_index);
-              std::cout << "      {" << face_index << " -> "
-                        << cell->face_orientation(face_index) << " | "
-                        << cell->face_flip(face_index) << " | "
-                        << cell->face_rotation(face_index) << " | "
-                        << "}" << std::endl;
-            } // face_index
-          std::cout << "}" << std::endl;
+            std::cout
+              << "CellId = " << current_cell_id << std::endl
+              << "   {index -> face_orientation | face_flip | face_rotation}: "
+              << std::endl;
+            for (unsigned int face_index = 0;
+                 face_index < GeometryInfo<dim>::faces_per_cell;
+                 ++face_index)
+              {
+                //              Triangulation<dim, spacedim>::face_iterator face
+                //              =
+                //                cell->face(face_index);
+                std::cout << "      {" << face_index << " -> "
+                          << cell->face_orientation(face_index) << " | "
+                          << cell->face_flip(face_index) << " | "
+                          << cell->face_rotation(face_index) << " | "
+                          << "}" << std::endl;
+              } // face_index
 
-
-          std::cout << "   line orientation: {  ";
-          for (unsigned int line_index = 0;
-               line_index < GeometryInfo<dim>::lines_per_cell;
-               ++line_index)
-            {
-              //        	  auto line = cell->line(line_index);
-              std::cout << cell->line_orientation(line_index) << "  ";
-            } // line_index
-          std::cout << "}" << std::endl << std::endl;
-        } // cell
+            std::cout << "   line orientation: {  ";
+            for (unsigned int line_index = 0;
+                 line_index < GeometryInfo<dim>::lines_per_cell;
+                 ++line_index)
+              {
+                //        	  auto line = cell->line(line_index);
+                std::cout << cell->line_orientation(line_index) << "  ";
+              } // line_index
+            std::cout << "}" << std::endl << std::endl;
+          } // cell
+      }     // if do_plot
   }
 
   template <int dim>
   void
-  MixedLaplaceProblem<dim>::make_grid_and_dofs_and_project(
+  ShapeFunctionWriter<dim>::make_grid_and_dofs_and_project(
     typename Triangulation<dim>::cell_iterator &cell)
   {
     { // Prepare
@@ -189,7 +201,7 @@ namespace Step20
       triangulation.refine_global(2);
     }
 
-    dof_handler.distribute_dofs(fe);
+    dof_handler.distribute_dofs(*fe_ptr);
 
     { // Constraints
       constraints.clear();
@@ -200,26 +212,26 @@ namespace Step20
     /*
      * Reinit and project the shape function
      */
-    ShapeFun::ShapeFunctionVector<dim> shape_function_RT(fe,
-                                                         cell,
-                                                         /* degree */ degree);
+    ShapeFun::ShapeFunctionVector<dim> shape_function(*fe_ptr,
+                                                      cell,
+                                                      /* degree */ degree);
     QGauss<dim>                        quad_rule(degree + 3);
 
-    for (unsigned int i = 0; i < fe.n_dofs_per_cell(); ++i)
+    for (unsigned int i = 0; i < (*fe_ptr).n_dofs_per_cell(); ++i)
       {
         basis[i].reinit(dof_handler.n_dofs());
 
-        shape_function_RT.set_shape_fun_index(i);
+        shape_function.set_shape_fun_index(i);
 
         VectorTools::project(
-          dof_handler, constraints, quad_rule, shape_function_RT, basis[i]);
+          dof_handler, constraints, quad_rule, shape_function, basis[i]);
       }
   }
 
 
   //  template <int dim>
   //  void
-  //  MixedLaplaceProblem<dim>::output_results(
+  //  ShapeFunctionWriter<dim>::output_results(
   //    typename Triangulation<dim>::cell_iterator &cell)
   //  {
   //    const std::vector<std::string> solution_name(dim, "u");
@@ -231,7 +243,8 @@ namespace Step20
   //    std::cout << "Writing basis in cell " << cell->id().to_string()
   //              << std::endl;
   //
-  //    for (unsigned int dof_index = 0; dof_index < fe.n_dofs_per_cell();
+  //    for (unsigned int dof_index = 0; dof_index <
+  //    (*fe_ptr).n_dofs_per_cell();
   //         ++dof_index)
   //      {
   //        DataOut<dim> data_out;
@@ -259,14 +272,14 @@ namespace Step20
 
   template <int dim>
   unsigned int
-  MixedLaplaceProblem<dim>::flip_dof_order_on_face(
+  ShapeFunctionWriter<dim>::flip_dof_order_on_face(
     typename Triangulation<dim>::cell_iterator &cell,
     const unsigned int                          dof_index,
     const unsigned int                          degree)
   {
     unsigned int new_dof_index = dof_index;
 
-    const unsigned int n_dofs_per_face = fe.n_dofs_per_face();
+    const unsigned int n_dofs_per_face = (*fe_ptr).n_dofs_per_face();
 
     const unsigned int n_face_dofs =
       GeometryInfo<dim>::faces_per_cell * n_dofs_per_face;
@@ -354,7 +367,7 @@ namespace Step20
 
   template <int dim>
   void
-  MixedLaplaceProblem<dim>::output_results(
+  ShapeFunctionWriter<dim>::output_results(
     typename Triangulation<dim>::cell_iterator &cell)
   {
     const bool flip = true;
@@ -364,24 +377,30 @@ namespace Step20
 
     if (flip)
       {
-        std::cout << "FE degree: " << fe.degree << std::endl;
-        std::cout << "Cell Id: " << cell->id().to_string() << std::endl;
+        std::cout << "Cell with id   " << cell->id().to_string()
+                  << "   has permuted dofs on faces:" << std::endl;
       }
 
-    for (unsigned int dof_index_in = 0; dof_index_in < fe.n_dofs_per_cell();
+    for (unsigned int dof_index_in = 0;
+         dof_index_in < (*fe_ptr).n_dofs_per_cell();
          ++dof_index_in)
       {
         const unsigned int dof_index =
-          (flip ? flip_dof_order_on_face(cell, dof_index_in, fe.degree) :
+          (flip ? flip_dof_order_on_face(cell, dof_index_in, (*fe_ptr).degree) :
                   dof_index_in);
 
         if (flip)
           {
-            if ((dof_index_in -
-                 flip_dof_order_on_face(cell, dof_index_in, fe.degree)) != 0)
-              std::cout << "   " << dof_index_in << " ---> "
-                        << flip_dof_order_on_face(cell, dof_index_in, fe.degree)
-                        << std::endl;
+            if ((dof_index_in - flip_dof_order_on_face(cell,
+                                                       dof_index_in,
+                                                       (*fe_ptr).degree)) != 0)
+              {
+                std::cout << "   " << dof_index_in << " ---> "
+                          << flip_dof_order_on_face(cell,
+                                                    dof_index_in,
+                                                    (*fe_ptr).degree)
+                          << std::endl;
+              }
           }
 
         const std::vector<std::string> solution_name(
@@ -409,7 +428,7 @@ namespace Step20
 
   template <int dim>
   void
-  MixedLaplaceProblem<dim>::run()
+  ShapeFunctionWriter<dim>::run()
   {
     for (auto cell : triangulation_coarse.active_cell_iterators())
       {
@@ -495,12 +514,19 @@ main(int argc, char *argv[])
     {
       using namespace Step20;
 
-      const unsigned int fe_degree = 2;
-      const int          dim       = 3;
+      const int dim = 3;
+
+      const unsigned int fe_degree = 0;
+      //      FE_BDM<dim>        fe(fe_degree);
+      FE_RaviartThomas<dim> fe(fe_degree); // the actual degree is one higher
+
+      const unsigned int n_refine_each_cell = 2;
 
       {
-        MixedLaplaceProblem<dim> mixed_laplace_problem(fe_degree, n_refine);
-        mixed_laplace_problem.run();
+        ShapeFunctionWriter<dim> shape_function_writer(fe,
+                                                       n_refine,
+                                                       n_refine_each_cell);
+        shape_function_writer.run();
       }
     }
   catch (std::exception &exc)
