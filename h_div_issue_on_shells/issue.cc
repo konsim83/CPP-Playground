@@ -198,7 +198,7 @@ namespace Step20
                                   corners,
                                   /* colorize faces */ false);
 
-      triangulation.refine_global(2);
+      triangulation.refine_global(n_refine_each_cell);
     }
 
     dof_handler.distribute_dofs(*fe_ptr);
@@ -270,6 +270,101 @@ namespace Step20
   //  }
 
 
+  //  template <int dim>
+  //  unsigned int
+  //  ShapeFunctionWriter<dim>::flip_dof_order_on_face_rt(
+  //    typename Triangulation<dim>::cell_iterator &cell,
+  //    const unsigned int                          dof_index,
+  //    const unsigned int                          degree)
+  //  {
+  //    unsigned int new_dof_index = dof_index;
+  //
+  //    const unsigned int n_dofs_per_face = (*fe_ptr).n_dofs_per_face();
+  //
+  //    const unsigned int n_face_dofs =
+  //      GeometryInfo<dim>::faces_per_cell * n_dofs_per_face;
+  //
+  //    /*
+  //     * Assume that all face dofs come before volume dofs.
+  //     */
+  //    if (dof_index < n_face_dofs)
+  //      {
+  //        /*
+  //         * Find the face belonging to this dof. This is integer division.
+  //         */
+  //        unsigned int face_index_from_shape_index =
+  //          dof_index / (n_dofs_per_face);
+  //
+  //        /*
+  //         * If face does not have standard orientation permute dofs
+  //         */
+  //        if (!cell->face_orientation(face_index_from_shape_index))
+  //          {
+  //            if (degree == 2)
+  //              {
+  //                if (dof_index % n_dofs_per_face == 0)
+  //                  {
+  //                    new_dof_index = dof_index;
+  //                  }
+  //                else if (dof_index % n_dofs_per_face == 1)
+  //                  {
+  //                    new_dof_index = dof_index + 1;
+  //                  }
+  //                else if (dof_index % n_dofs_per_face == 2)
+  //                  {
+  //                    new_dof_index = dof_index - 1;
+  //                  }
+  //                else if (dof_index % n_dofs_per_face == 3)
+  //                  {
+  //                    new_dof_index = dof_index;
+  //                  }
+  //              } // degree == 2
+  //            else if (degree == 3)
+  //              {
+  //                if (dof_index % n_dofs_per_face == 0)
+  //                  {
+  //                    new_dof_index = dof_index;
+  //                  }
+  //                else if (dof_index % n_dofs_per_face == 1)
+  //                  {
+  //                    new_dof_index = dof_index + 2;
+  //                  }
+  //                else if (dof_index % n_dofs_per_face == 2)
+  //                  {
+  //                    new_dof_index = dof_index + 4;
+  //                  }
+  //                else if (dof_index % n_dofs_per_face == 3)
+  //                  {
+  //                    new_dof_index = dof_index - 2;
+  //                  }
+  //                else if (dof_index % n_dofs_per_face == 4)
+  //                  {
+  //                    new_dof_index = dof_index;
+  //                  }
+  //                else if (dof_index % n_dofs_per_face == 5)
+  //                  {
+  //                    new_dof_index = dof_index + 2;
+  //                  }
+  //                else if (dof_index % n_dofs_per_face == 6)
+  //                  {
+  //                    new_dof_index = dof_index - 4;
+  //                  }
+  //                else if (dof_index % n_dofs_per_face == 7)
+  //                  {
+  //                    new_dof_index = dof_index - 2;
+  //                  }
+  //                else if (dof_index % n_dofs_per_face == 8)
+  //                  {
+  //                    new_dof_index = dof_index;
+  //                  }
+  //              } // degree == 3
+  //          }     // if face flipped
+  //      }         // if dof_index < n_face_dofs
+  //
+  //    return new_dof_index;
+  //  }
+
+
   template <int dim>
   unsigned int
   ShapeFunctionWriter<dim>::flip_dof_order_on_face(
@@ -314,10 +409,6 @@ namespace Step20
                   {
                     new_dof_index = dof_index - 1;
                   }
-                else if (dof_index % n_dofs_per_face == 3)
-                  {
-                    new_dof_index = dof_index;
-                  }
               } // degree == 2
             else if (degree == 3)
               {
@@ -327,35 +418,23 @@ namespace Step20
                   }
                 else if (dof_index % n_dofs_per_face == 1)
                   {
-                    new_dof_index = dof_index + 2;
+                    new_dof_index = dof_index + 1;
                   }
                 else if (dof_index % n_dofs_per_face == 2)
                   {
-                    new_dof_index = dof_index + 4;
+                    new_dof_index = dof_index - 1;
                   }
                 else if (dof_index % n_dofs_per_face == 3)
                   {
-                    new_dof_index = dof_index - 2;
+                    new_dof_index = dof_index;
                   }
                 else if (dof_index % n_dofs_per_face == 4)
                   {
-                    new_dof_index = dof_index;
+                    new_dof_index = dof_index + 1;
                   }
                 else if (dof_index % n_dofs_per_face == 5)
                   {
-                    new_dof_index = dof_index + 2;
-                  }
-                else if (dof_index % n_dofs_per_face == 6)
-                  {
-                    new_dof_index = dof_index - 4;
-                  }
-                else if (dof_index % n_dofs_per_face == 7)
-                  {
-                    new_dof_index = dof_index - 2;
-                  }
-                else if (dof_index % n_dofs_per_face == 8)
-                  {
-                    new_dof_index = dof_index;
+                    new_dof_index = dof_index - 1;
                   }
               } // degree == 3
           }     // if face flipped
@@ -363,6 +442,7 @@ namespace Step20
 
     return new_dof_index;
   }
+
 
 
   template <int dim>
@@ -516,11 +596,11 @@ main(int argc, char *argv[])
 
       const int dim = 3;
 
-      const unsigned int fe_degree = 0;
-      //      FE_BDM<dim>        fe(fe_degree);
-      FE_RaviartThomas<dim> fe(fe_degree); // the actual degree is one higher
-
       const unsigned int n_refine_each_cell = 2;
+      const unsigned int fe_degree          = 2;
+
+      FE_BDM<dim> fe(fe_degree);
+      //      FE_RaviartThomas<dim> fe(fe_degree);
 
       {
         ShapeFunctionWriter<dim> shape_function_writer(fe,
