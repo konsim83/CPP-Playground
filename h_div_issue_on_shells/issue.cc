@@ -10,6 +10,7 @@
 
 #include <deal.II/fe/fe_bdm.h>
 #include <deal.II/fe/fe_dgq.h>
+#include <deal.II/fe/fe_nedelec.h>
 #include <deal.II/fe/fe_raviart_thomas.h>
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/fe/fe_values.h>
@@ -450,7 +451,7 @@ namespace Step20
   ShapeFunctionWriter<dim>::output_results(
     typename Triangulation<dim>::cell_iterator &cell)
   {
-    const bool flip = true;
+    const bool flip = false;
 
     DataOut<dim> data_out;
     data_out.attach_dof_handler(dof_handler);
@@ -531,13 +532,14 @@ main(int argc, char *argv[])
   // Very simple way of input handling.
   if (argc < 2)
     {
-      std::cout << "You must provide an initial number of global refinements "
-                   "\"-n n_refine\""
-                << std::endl;
+      std::cout
+        << "You must provide an initial number of global refinements for each cell "
+           "\"-n n_refine_each_cell\""
+        << std::endl;
       exit(1);
     }
 
-  unsigned int n_refine = 0;
+  unsigned int n_refine_each_cell = 0;
 
   std::list<std::string> args;
   for (int i = 1; i < argc; ++i)
@@ -562,7 +564,7 @@ main(int argc, char *argv[])
               try
                 {
                   std::size_t pos;
-                  n_refine = std::stoi(args.front(), &pos);
+                  n_refine_each_cell = std::stoi(args.front(), &pos);
                   if (pos < args.front().size())
                     {
                       std::cerr
@@ -596,11 +598,13 @@ main(int argc, char *argv[])
 
       const int dim = 3;
 
-      const unsigned int n_refine_each_cell = 2;
-      const unsigned int fe_degree          = 2;
 
-      FE_BDM<dim> fe(fe_degree);
+      const unsigned int n_refine  = 0; // refines the test domain itself
+      const unsigned int fe_degree = 0;
+
+      //      FE_BDM<dim> fe(fe_degree);
       //      FE_RaviartThomas<dim> fe(fe_degree);
+      FE_Nedelec<dim> fe(fe_degree);
 
       {
         ShapeFunctionWriter<dim> shape_function_writer(fe,
