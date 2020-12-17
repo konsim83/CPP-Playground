@@ -2,6 +2,7 @@
 #include <deal.II/base/logstream.h>
 #include <deal.II/base/quadrature_lib.h>
 #include <deal.II/base/tensor_function.h>
+#include <deal.II/base/utilities.h>
 
 #include <deal.II/dofs/dof_accessor.h>
 #include <deal.II/dofs/dof_handler.h>
@@ -37,6 +38,7 @@
 #include <shape_fun_vector.hpp>
 
 #include <fstream>
+#include <functional>
 #include <iostream>
 #include <map>
 #include <memory>
@@ -73,9 +75,14 @@ namespace Step20
      * across faces is met. maps a "standard order"
      */
     unsigned int
-    flip_dof_order_on_face(typename Triangulation<dim>::cell_iterator &cell,
-                           const unsigned int shape_fun_index,
-                           const unsigned int order);
+    flip_dof_order_on_face_rt(typename Triangulation<dim>::cell_iterator &cell,
+                              const unsigned int shape_fun_index,
+                              const unsigned int order);
+
+    unsigned int
+    flip_dof_order_on_face_bdm(typename Triangulation<dim>::cell_iterator &cell,
+                               const unsigned int shape_fun_index,
+                               const unsigned int order);
 
     Triangulation<dim> triangulation_coarse;
 
@@ -114,12 +121,20 @@ namespace Step20
     ///////////////////////////////////
     ///////////////////////////////////
 
-    GridGenerator::hyper_shell(triangulation_coarse,
-                               Point<dim>(),
-                               1,
-                               2,
-                               /* n_cells */ 6,
-                               /* colorize */ false);
+    //    GridGenerator::hyper_shell(triangulation_coarse,
+    //                               Point<dim>(),
+    //                               1,
+    //                               2,
+    //                               /* n_cells */ 6,
+    //                               /* colorize */ false);
+
+    GridGenerator::moebius(triangulation_coarse,
+                           /* n_cells */ 8,
+                           /* n_rotations by pi/2*/ 2,
+                           /* R */ 2,
+                           /* r */ 0.5);
+
+    //    GridGenerator::hyper_ball(triangulation_coarse);
 
     //    GridTools::distort_random(/* factor */ 0.15,
     //                              triangulation_coarse,
@@ -156,9 +171,10 @@ namespace Step20
                  face_index < GeometryInfo<dim>::faces_per_cell;
                  ++face_index)
               {
-                //              Triangulation<dim, spacedim>::face_iterator face
-                //              =
-                //                cell->face(face_index);
+                //                typename Triangulation<dim>::face_iterator
+                //                face =
+                //                  cell->face(face_index);
+
                 std::cout << "      {" << face_index << " -> "
                           << cell->face_orientation(face_index) << " | "
                           << cell->face_flip(face_index) << " | "
@@ -230,145 +246,9 @@ namespace Step20
   }
 
 
-  //  template <int dim>
-  //  void
-  //  ShapeFunctionWriter<dim>::output_results(
-  //    typename Triangulation<dim>::cell_iterator &cell)
-  //  {
-  //    const std::vector<std::string> solution_name(dim, "u");
-  //    const
-  //    std::vector<DataComponentInterpretation::DataComponentInterpretation>
-  //      interpretation(dim,
-  //                     DataComponentInterpretation::component_is_part_of_vector);
-  //
-  //    std::cout << "Writing basis in cell " << cell->id().to_string()
-  //              << std::endl;
-  //
-  //    for (unsigned int dof_index = 0; dof_index <
-  //    (*fe_ptr).n_dofs_per_cell();
-  //         ++dof_index)
-  //      {
-  //        DataOut<dim> data_out;
-  //        data_out.attach_dof_handler(dof_handler);
-  //
-  //        data_out.add_data_vector(basis[dof_index],
-  //                                 solution_name,
-  //                                 DataOut<dim>::type_dof_data,
-  //                                 interpretation);
-  //
-  //        data_out.build_patches(degree + 1);
-  //
-  //        std::string filename = "basis_cell-";
-  //        filename += cell->id().to_string();
-  //        filename += "_" + Utilities::int_to_string(dof_index, 3);
-  //
-  //        std::ofstream output(filename + ".vtu");
-  //        data_out.write_vtu(output);
-  //
-  //        std::cout << "   DoF index: " << dof_index
-  //                  << "   filename: " << filename << std::endl;
-  //      }
-  //  }
-
-
-  //  template <int dim>
-  //  unsigned int
-  //  ShapeFunctionWriter<dim>::flip_dof_order_on_face_rt(
-  //    typename Triangulation<dim>::cell_iterator &cell,
-  //    const unsigned int                          dof_index,
-  //    const unsigned int                          degree)
-  //  {
-  //    unsigned int new_dof_index = dof_index;
-  //
-  //    const unsigned int n_dofs_per_face = (*fe_ptr).n_dofs_per_face();
-  //
-  //    const unsigned int n_face_dofs =
-  //      GeometryInfo<dim>::faces_per_cell * n_dofs_per_face;
-  //
-  //    /*
-  //     * Assume that all face dofs come before volume dofs.
-  //     */
-  //    if (dof_index < n_face_dofs)
-  //      {
-  //        /*
-  //         * Find the face belonging to this dof. This is integer division.
-  //         */
-  //        unsigned int face_index_from_shape_index =
-  //          dof_index / (n_dofs_per_face);
-  //
-  //        /*
-  //         * If face does not have standard orientation permute dofs
-  //         */
-  //        if (!cell->face_orientation(face_index_from_shape_index))
-  //          {
-  //            if (degree == 2)
-  //              {
-  //                if (dof_index % n_dofs_per_face == 0)
-  //                  {
-  //                    new_dof_index = dof_index;
-  //                  }
-  //                else if (dof_index % n_dofs_per_face == 1)
-  //                  {
-  //                    new_dof_index = dof_index + 1;
-  //                  }
-  //                else if (dof_index % n_dofs_per_face == 2)
-  //                  {
-  //                    new_dof_index = dof_index - 1;
-  //                  }
-  //                else if (dof_index % n_dofs_per_face == 3)
-  //                  {
-  //                    new_dof_index = dof_index;
-  //                  }
-  //              } // degree == 2
-  //            else if (degree == 3)
-  //              {
-  //                if (dof_index % n_dofs_per_face == 0)
-  //                  {
-  //                    new_dof_index = dof_index;
-  //                  }
-  //                else if (dof_index % n_dofs_per_face == 1)
-  //                  {
-  //                    new_dof_index = dof_index + 2;
-  //                  }
-  //                else if (dof_index % n_dofs_per_face == 2)
-  //                  {
-  //                    new_dof_index = dof_index + 4;
-  //                  }
-  //                else if (dof_index % n_dofs_per_face == 3)
-  //                  {
-  //                    new_dof_index = dof_index - 2;
-  //                  }
-  //                else if (dof_index % n_dofs_per_face == 4)
-  //                  {
-  //                    new_dof_index = dof_index;
-  //                  }
-  //                else if (dof_index % n_dofs_per_face == 5)
-  //                  {
-  //                    new_dof_index = dof_index + 2;
-  //                  }
-  //                else if (dof_index % n_dofs_per_face == 6)
-  //                  {
-  //                    new_dof_index = dof_index - 4;
-  //                  }
-  //                else if (dof_index % n_dofs_per_face == 7)
-  //                  {
-  //                    new_dof_index = dof_index - 2;
-  //                  }
-  //                else if (dof_index % n_dofs_per_face == 8)
-  //                  {
-  //                    new_dof_index = dof_index;
-  //                  }
-  //              } // degree == 3
-  //          }     // if face flipped
-  //      }         // if dof_index < n_face_dofs
-  //
-  //    return new_dof_index;
-  //  }
-
-
   template <int dim>
   unsigned int
-  ShapeFunctionWriter<dim>::flip_dof_order_on_face(
+  ShapeFunctionWriter<dim>::flip_dof_order_on_face_rt(
     typename Triangulation<dim>::cell_iterator &cell,
     const unsigned int                          dof_index,
     const unsigned int                          degree)
@@ -394,7 +274,116 @@ namespace Step20
         /*
          * If face does not have standard orientation permute dofs
          */
-        if (!cell->face_orientation(face_index_from_shape_index))
+        if (((!cell->face_orientation(face_index_from_shape_index)) &&
+             (!cell->face_rotation(!face_index_from_shape_index))) ||
+            ((!cell->face_orientation(face_index_from_shape_index)) &&
+             (!cell->face_rotation(face_index_from_shape_index))) ||
+            ((cell->face_orientation(face_index_from_shape_index)) &&
+             (cell->face_rotation(face_index_from_shape_index))) ||
+            ((cell->face_orientation(face_index_from_shape_index)) &&
+             (cell->face_rotation(face_index_from_shape_index))))
+          {
+            if (degree == 2)
+              {
+                if (dof_index % n_dofs_per_face == 0)
+                  {
+                    new_dof_index = dof_index;
+                  }
+                else if (dof_index % n_dofs_per_face == 1)
+                  {
+                    new_dof_index = dof_index + 1;
+                  }
+                else if (dof_index % n_dofs_per_face == 2)
+                  {
+                    new_dof_index = dof_index - 1;
+                  }
+                else if (dof_index % n_dofs_per_face == 3)
+                  {
+                    new_dof_index = dof_index;
+                  }
+              } // degree == 2
+            else if (degree == 3)
+              {
+                if (dof_index % n_dofs_per_face == 0)
+                  {
+                    new_dof_index = dof_index;
+                  }
+                else if (dof_index % n_dofs_per_face == 1)
+                  {
+                    new_dof_index = dof_index + 2;
+                  }
+                else if (dof_index % n_dofs_per_face == 2)
+                  {
+                    new_dof_index = dof_index + 4;
+                  }
+                else if (dof_index % n_dofs_per_face == 3)
+                  {
+                    new_dof_index = dof_index - 2;
+                  }
+                else if (dof_index % n_dofs_per_face == 4)
+                  {
+                    new_dof_index = dof_index;
+                  }
+                else if (dof_index % n_dofs_per_face == 5)
+                  {
+                    new_dof_index = dof_index + 2;
+                  }
+                else if (dof_index % n_dofs_per_face == 6)
+                  {
+                    new_dof_index = dof_index - 4;
+                  }
+                else if (dof_index % n_dofs_per_face == 7)
+                  {
+                    new_dof_index = dof_index - 2;
+                  }
+                else if (dof_index % n_dofs_per_face == 8)
+                  {
+                    new_dof_index = dof_index;
+                  }
+              } // degree == 3
+          }     // if face flipped
+      }         // if dof_index < n_face_dofs
+
+    return new_dof_index;
+  }
+
+
+  template <int dim>
+  unsigned int
+  ShapeFunctionWriter<dim>::flip_dof_order_on_face_bdm(
+    typename Triangulation<dim>::cell_iterator &cell,
+    const unsigned int                          dof_index,
+    const unsigned int                          degree)
+  {
+    unsigned int new_dof_index = dof_index;
+
+    const unsigned int n_dofs_per_face = (*fe_ptr).n_dofs_per_face();
+
+    const unsigned int n_face_dofs =
+      GeometryInfo<dim>::faces_per_cell * n_dofs_per_face;
+
+    /*
+     * Assume that all face dofs come before volume dofs.
+     */
+    if (dof_index < n_face_dofs)
+      {
+        /*
+         * Find the face belonging to this dof. This is integer division.
+         */
+        unsigned int face_index_from_shape_index =
+          dof_index / (n_dofs_per_face);
+
+        /*
+         * If face does not have standard orientation permute dofs
+         */
+        if (((!cell->face_orientation(face_index_from_shape_index)) &&
+             (!cell->face_rotation(!face_index_from_shape_index))) ||
+            ((!cell->face_orientation(face_index_from_shape_index)) &&
+             (!cell->face_rotation(face_index_from_shape_index))) ||
+            ((cell->face_orientation(face_index_from_shape_index)) &&
+             (cell->face_rotation(face_index_from_shape_index))) ||
+            ((cell->face_orientation(face_index_from_shape_index)) &&
+             (cell->face_rotation(face_index_from_shape_index))))
           {
             if (degree == 2)
               {
@@ -451,7 +440,38 @@ namespace Step20
   ShapeFunctionWriter<dim>::output_results(
     typename Triangulation<dim>::cell_iterator &cell)
   {
-    const bool flip = false;
+    const bool flip = true;
+
+    std::function<unsigned int(typename Triangulation<dim>::cell_iterator &,
+                               const unsigned int,
+                               const unsigned int)>
+      flip_dof_order_on_face;
+
+    std::string fe_rt_str(
+      "FE_RaviartThomas<" + Utilities::int_to_string(dim, 1) + ">(" +
+      Utilities::int_to_string((*fe_ptr).degree - 1, 1) + ")");
+    std::string fe_bdm_str("FE_BDM<" + Utilities::int_to_string(dim, 1) + ">(" +
+                           Utilities::int_to_string((*fe_ptr).degree - 1, 1) +
+                           ")");
+
+    if (fe_rt_str.compare((*fe_ptr).get_name()) == 0)
+      {
+        flip_dof_order_on_face =
+          std::bind(&ShapeFunctionWriter<dim>::flip_dof_order_on_face_rt,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2,
+                    std::placeholders::_3);
+      }
+    else if (fe_bdm_str.compare((*fe_ptr).get_name()) == 0)
+      {
+        flip_dof_order_on_face =
+          std::bind(&ShapeFunctionWriter<dim>::flip_dof_order_on_face_bdm,
+                    this,
+                    std::placeholders::_1,
+                    std::placeholders::_2,
+                    std::placeholders::_3);
+      }
 
     DataOut<dim> data_out;
     data_out.attach_dof_handler(dof_handler);
@@ -516,6 +536,18 @@ namespace Step20
         make_grid_and_dofs_and_project(cell);
 
         output_results(cell);
+
+        cell++;
+        cell++;
+        cell++;
+        cell++;
+        cell++;
+        cell++;
+        cell++;
+        make_grid_and_dofs_and_project(cell);
+
+        output_results(cell);
+        break;
       }
   }
 } // namespace Step20
@@ -600,11 +632,11 @@ main(int argc, char *argv[])
 
 
       const unsigned int n_refine  = 0; // refines the test domain itself
-      const unsigned int fe_degree = 1;
+      const unsigned int fe_degree = 2;
 
       //      FE_BDM<dim> fe(fe_degree);
-      //      FE_RaviartThomas<dim> fe(fe_degree);
-      FE_Nedelec<dim> fe(fe_degree);
+      FE_RaviartThomas<dim> fe(fe_degree);
+      //      FE_Nedelec<dim> fe(fe_degree);
 
       {
         ShapeFunctionWriter<dim> shape_function_writer(fe,
