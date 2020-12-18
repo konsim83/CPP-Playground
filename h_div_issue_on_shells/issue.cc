@@ -279,86 +279,86 @@ namespace Step20
          * If face does not have standard orientation permute dofs
          */
         if (((!cell->face_orientation(face_index_from_shape_index)) &&
-             (!cell->face_rotation(!face_index_from_shape_index))) ||
+             (!cell->face_flip(!face_index_from_shape_index))) ||
             ((!cell->face_orientation(face_index_from_shape_index)) &&
-             (!cell->face_rotation(face_index_from_shape_index))) ||
+             (!cell->face_flip(face_index_from_shape_index))) ||
             ((cell->face_orientation(face_index_from_shape_index)) &&
              (cell->face_rotation(face_index_from_shape_index))) ||
             ((cell->face_orientation(face_index_from_shape_index)) &&
              (cell->face_rotation(face_index_from_shape_index))))
           {
-            if (degree == 2)
-              {
-                if (dof_index % n_dofs_per_face == 0)
-                  {
-                    new_dof_index = dof_index;
-                  }
-                else if (dof_index % n_dofs_per_face == 1)
-                  {
-                    new_dof_index = dof_index + 1;
-                  }
-                else if (dof_index % n_dofs_per_face == 2)
-                  {
-                    new_dof_index = dof_index - 1;
-                  }
-                else if (dof_index % n_dofs_per_face == 3)
-                  {
-                    new_dof_index = dof_index;
-                  }
-              } // degree == 2
-            else if (degree == 3)
-              {
-                if (dof_index % n_dofs_per_face == 0)
-                  {
-                    new_dof_index = dof_index;
-                  }
-                else if (dof_index % n_dofs_per_face == 1)
-                  {
-                    new_dof_index = dof_index + 2;
-                  }
-                else if (dof_index % n_dofs_per_face == 2)
-                  {
-                    new_dof_index = dof_index + 4;
-                  }
-                else if (dof_index % n_dofs_per_face == 3)
-                  {
-                    new_dof_index = dof_index - 2;
-                  }
-                else if (dof_index % n_dofs_per_face == 4)
-                  {
-                    new_dof_index = dof_index;
-                  }
-                else if (dof_index % n_dofs_per_face == 5)
-                  {
-                    new_dof_index = dof_index + 2;
-                  }
-                else if (dof_index % n_dofs_per_face == 6)
-                  {
-                    new_dof_index = dof_index - 4;
-                  }
-                else if (dof_index % n_dofs_per_face == 7)
-                  {
-                    new_dof_index = dof_index - 2;
-                  }
-                else if (dof_index % n_dofs_per_face == 8)
-                  {
-                    new_dof_index = dof_index;
-                  }
-              } // degree == 3
-            else if (degree == 4)
-              {
-                const unsigned int n              = degree;
-                unsigned int       local_face_dof = dof_index % n_dofs_per_face;
+            //            if (degree == 2)
+            //              {
+            //                if (dof_index % n_dofs_per_face == 0)
+            //                  {
+            //                    new_dof_index = dof_index;
+            //                  }
+            //                else if (dof_index % n_dofs_per_face == 1)
+            //                  {
+            //                    new_dof_index = dof_index + 1;
+            //                  }
+            //                else if (dof_index % n_dofs_per_face == 2)
+            //                  {
+            //                    new_dof_index = dof_index - 1;
+            //                  }
+            //                else if (dof_index % n_dofs_per_face == 3)
+            //                  {
+            //                    new_dof_index = dof_index;
+            //                  }
+            //              } // degree == 2
+            //            else if (degree == 3)
+            //              {
+            //                if (dof_index % n_dofs_per_face == 0)
+            //                  {
+            //                    new_dof_index = dof_index;
+            //                  }
+            //                else if (dof_index % n_dofs_per_face == 1)
+            //                  {
+            //                    new_dof_index = dof_index + 2;
+            //                  }
+            //                else if (dof_index % n_dofs_per_face == 2)
+            //                  {
+            //                    new_dof_index = dof_index + 4;
+            //                  }
+            //                else if (dof_index % n_dofs_per_face == 3)
+            //                  {
+            //                    new_dof_index = dof_index - 2;
+            //                  }
+            //                else if (dof_index % n_dofs_per_face == 4)
+            //                  {
+            //                    new_dof_index = dof_index;
+            //                  }
+            //                else if (dof_index % n_dofs_per_face == 5)
+            //                  {
+            //                    new_dof_index = dof_index + 2;
+            //                  }
+            //                else if (dof_index % n_dofs_per_face == 6)
+            //                  {
+            //                    new_dof_index = dof_index - 4;
+            //                  }
+            //                else if (dof_index % n_dofs_per_face == 7)
+            //                  {
+            //                    new_dof_index = dof_index - 2;
+            //                  }
+            //                else if (dof_index % n_dofs_per_face == 8)
+            //                  {
+            //                    new_dof_index = dof_index;
+            //                  }
+            //              } // degree == 3
+            //            else if (degree == 4)
+            //              {
+            const unsigned int n              = degree;
+            unsigned int       local_face_dof = dof_index % n_dofs_per_face;
 
-                // Row and column
-                unsigned int i = local_face_dof % n, j = local_face_dof / n;
+            // Row and column
+            unsigned int i = local_face_dof % n, j = local_face_dof / n;
 
-                unsigned int offset = j + i * n - local_face_dof;
+            unsigned int offset = j + i * n - local_face_dof;
 
-                new_dof_index = dof_index + offset;
-              } // degree ==4
-          }     // if face flipped
-      }         // if dof_index < n_face_dofs
+            new_dof_index = dof_index + offset;
+            //              } // degree ==4
+          } // if face needs dofpermutation
+      }     // if dof_index < n_face_dofs
 
     return new_dof_index;
   }
@@ -393,9 +393,9 @@ namespace Step20
          * If face does not have standard orientation permute dofs
          */
         if (((!cell->face_orientation(face_index_from_shape_index)) &&
-             (!cell->face_rotation(!face_index_from_shape_index))) ||
+             (!cell->face_flip(!face_index_from_shape_index))) ||
             ((!cell->face_orientation(face_index_from_shape_index)) &&
-             (!cell->face_rotation(face_index_from_shape_index))) ||
+             (!cell->face_flip(face_index_from_shape_index))) ||
             ((cell->face_orientation(face_index_from_shape_index)) &&
              (cell->face_rotation(face_index_from_shape_index))) ||
             ((cell->face_orientation(face_index_from_shape_index)) &&
