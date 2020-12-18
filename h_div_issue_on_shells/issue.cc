@@ -130,7 +130,7 @@ namespace Step20
 
     GridGenerator::moebius(triangulation_coarse,
                            /* n_cells */ 8,
-                           /* n_rotations by pi/2*/ 2,
+                           /* n_rotations by pi/2*/ 3,
                            /* R */ 2,
                            /* r */ 0.5);
 
@@ -234,15 +234,19 @@ namespace Step20
                                                       /* degree */ degree);
     QGauss<dim>                        quad_rule(degree + 3);
 
-    for (unsigned int i = 0; i < (*fe_ptr).n_dofs_per_cell(); ++i)
+    /*
+     * Project only face dofs
+     */
+    std::cout << "Projecting   " << n_face_dofs << "   face dofs ...";
+    for (unsigned int i = 0; i < n_face_dofs; ++i)
       {
         basis[i].reinit(dof_handler.n_dofs());
 
         shape_function.set_shape_fun_index(i);
-
         VectorTools::project(
           dof_handler, constraints, quad_rule, shape_function, basis[i]);
       }
+    std::cout << "done." << std::endl;
   }
 
 
@@ -341,6 +345,18 @@ namespace Step20
                     new_dof_index = dof_index;
                   }
               } // degree == 3
+            else if (degree == 4)
+              {
+                const unsigned int n              = degree;
+                unsigned int       local_face_dof = dof_index % n_dofs_per_face;
+
+                // Row and column
+                unsigned int i = local_face_dof % n, j = local_face_dof / n;
+
+                unsigned int offset = j + i * n - local_face_dof;
+
+                new_dof_index = dof_index + offset;
+              } // degree ==4
           }     // if face flipped
       }         // if dof_index < n_face_dofs
 
@@ -482,8 +498,7 @@ namespace Step20
                   << "   has permuted dofs on faces:" << std::endl;
       }
 
-    for (unsigned int dof_index_in = 0;
-         dof_index_in < (*fe_ptr).n_dofs_per_cell();
+    for (unsigned int dof_index_in = 0; dof_index_in < n_face_dofs;
          ++dof_index_in)
       {
         const unsigned int dof_index =
@@ -632,7 +647,7 @@ main(int argc, char *argv[])
 
 
       const unsigned int n_refine  = 0; // refines the test domain itself
-      const unsigned int fe_degree = 2;
+      const unsigned int fe_degree = 3;
 
       //      FE_BDM<dim> fe(fe_degree);
       FE_RaviartThomas<dim> fe(fe_degree);
