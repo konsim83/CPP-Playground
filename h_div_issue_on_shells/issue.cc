@@ -279,9 +279,9 @@ namespace Step20
          * If face does not have standard orientation permute dofs
          */
         if (((!cell->face_orientation(face_index_from_shape_index)) &&
-             (!cell->face_flip(!face_index_from_shape_index))) ||
+             (!cell->face_rotation(!face_index_from_shape_index))) ||
             ((!cell->face_orientation(face_index_from_shape_index)) &&
-             (!cell->face_flip(face_index_from_shape_index))) ||
+             (!cell->face_rotation(face_index_from_shape_index))) ||
             ((cell->face_orientation(face_index_from_shape_index)) &&
              (cell->face_rotation(face_index_from_shape_index))) ||
             ((cell->face_orientation(face_index_from_shape_index)) &&
@@ -393,9 +393,9 @@ namespace Step20
          * If face does not have standard orientation permute dofs
          */
         if (((!cell->face_orientation(face_index_from_shape_index)) &&
-             (!cell->face_flip(!face_index_from_shape_index))) ||
+             (!cell->face_rotation(!face_index_from_shape_index))) ||
             ((!cell->face_orientation(face_index_from_shape_index)) &&
-             (!cell->face_flip(face_index_from_shape_index))) ||
+             (!cell->face_rotation(face_index_from_shape_index))) ||
             ((cell->face_orientation(face_index_from_shape_index)) &&
              (cell->face_rotation(face_index_from_shape_index))) ||
             ((cell->face_orientation(face_index_from_shape_index)) &&
