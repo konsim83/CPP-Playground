@@ -17,6 +17,7 @@
 #include <deal.II/fe/fe_values.h>
 
 #include <deal.II/grid/grid_generator.h>
+#include <deal.II/grid/grid_reordering.h>
 #include <deal.II/grid/grid_tools.h>
 #include <deal.II/grid/tria.h>
 #include <deal.II/grid/tria_accessor.h>
@@ -48,13 +49,169 @@ namespace Step20
 {
   using namespace dealii;
 
+  void
+  generate_test_mesh(Triangulation<3> &triangulation,
+                     const bool        face_orientation,
+                     const bool        face_flip,
+                     const bool        face_rotation)
+  {
+    std::vector<Point<3>>    vertices;
+    const unsigned int       n_cells = 2;
+    std::vector<CellData<3>> cells(n_cells);
+
+    const Point<3> p(1, 0, 0);
+
+    // Corner points of the cube [0,1]^3
+    static const std::array<Point<3>, 12> hexahedron = {{{0, 0, 0},   //
+                                                         {1, 0, 0},   //
+                                                         {0, 1, 0},   //
+                                                         {1, 1, 0},   //
+                                                         {0, 0, 1},   //
+                                                         {1, 0, 1},   //
+                                                         {0, 1, 1},   //
+                                                         {1, 1, 1},   //
+                                                         {2, 0, 0},   // 8
+                                                         {2, 1, 0},   // 9
+                                                         {2, 0, 1},   // 10
+                                                         {2, 1, 1}}}; // 11
+
+    for (unsigned int i = 0; i < 12; ++i)
+      vertices.push_back(hexahedron[i]);
+
+    int cell_vertices[n_cells][8] = {
+      {0, 1, 2, 3, 4, 5, 6, 7},        // unit cube
+      {8, 9, 10, 11, 12, 13, 14, 15}}; // shifted cube
+
+    // binary to case number
+    int this_case = 4 * face_orientation + 2 * face_flip + face_rotation;
+
+    switch (this_case)
+      {
+          case 0: {
+            cell_vertices[1][0] = 8;
+            cell_vertices[1][1] = 1;
+            cell_vertices[1][2] = 10;
+            cell_vertices[1][3] = 5;
+            cell_vertices[1][4] = 9;
+            cell_vertices[1][5] = 3;
+            cell_vertices[1][6] = 11;
+            cell_vertices[1][7] = 7;
+            break;
+          }
+
+          case 1: {
+            cell_vertices[1][0] = 10;
+            cell_vertices[1][1] = 5;
+            cell_vertices[1][2] = 11;
+            cell_vertices[1][3] = 7;
+            cell_vertices[1][4] = 8;
+            cell_vertices[1][5] = 1;
+            cell_vertices[1][6] = 9;
+            cell_vertices[1][7] = 3;
+            break;
+          }
+
+          case 2: {
+            cell_vertices[1][0] = 11;
+            cell_vertices[1][1] = 7;
+            cell_vertices[1][2] = 9;
+            cell_vertices[1][3] = 3;
+            cell_vertices[1][4] = 10;
+            cell_vertices[1][5] = 5;
+            cell_vertices[1][6] = 8;
+            cell_vertices[1][7] = 1;
+            break;
+          }
+
+          case 3: {
+            cell_vertices[1][0] = 9;
+            cell_vertices[1][1] = 3;
+            cell_vertices[1][2] = 8;
+            cell_vertices[1][3] = 1;
+            cell_vertices[1][4] = 11;
+            cell_vertices[1][5] = 7;
+            cell_vertices[1][6] = 10;
+            cell_vertices[1][7] = 5;
+            break;
+          }
+
+          case 4: {
+            cell_vertices[1][0] = 1;
+            cell_vertices[1][1] = 8;
+            cell_vertices[1][2] = 3;
+            cell_vertices[1][3] = 9;
+            cell_vertices[1][4] = 5;
+            cell_vertices[1][5] = 10;
+            cell_vertices[1][6] = 7;
+            cell_vertices[1][7] = 11;
+            break;
+          }
+
+          case 5: {
+            cell_vertices[1][0] = 5;
+            cell_vertices[1][1] = 10;
+            cell_vertices[1][2] = 1;
+            cell_vertices[1][3] = 8;
+            cell_vertices[1][4] = 7;
+            cell_vertices[1][5] = 11;
+            cell_vertices[1][6] = 3;
+            cell_vertices[1][7] = 9;
+            break;
+          }
+
+          case 6: {
+            cell_vertices[1][0] = 7;
+            cell_vertices[1][1] = 11;
+            cell_vertices[1][2] = 5;
+            cell_vertices[1][3] = 10;
+            cell_vertices[1][4] = 3;
+            cell_vertices[1][5] = 9;
+            cell_vertices[1][6] = 1;
+            cell_vertices[1][7] = 8;
+            break;
+          }
+
+          case 7: {
+            cell_vertices[1][0] = 3;
+            cell_vertices[1][1] = 9;
+            cell_vertices[1][2] = 7;
+            cell_vertices[1][3] = 11;
+            cell_vertices[1][4] = 1;
+            cell_vertices[1][5] = 8;
+            cell_vertices[1][6] = 5;
+            cell_vertices[1][7] = 10;
+            break;
+          }
+      } // switch
+
+    cells.resize(n_cells, CellData<3>());
+
+    for (unsigned int cell_index = 0; cell_index < n_cells; ++cell_index)
+      {
+        for (const unsigned int vertex_index :
+             GeometryInfo<3>::vertex_indices())
+          cells[cell_index].vertices[vertex_index] =
+            cell_vertices[cell_index][vertex_index];
+        cells[cell_index].material_id = 0;
+      }
+
+    //    GridReordering<3>::invert_all_cells_of_negative_grid(vertices, cells);
+    triangulation.create_triangulation(vertices, cells, SubCellData());
+  }
+
+
+  /*
+   *
+   */
+
+
   template <int dim>
   class ShapeFunctionWriter
   {
   public:
     ShapeFunctionWriter(const FiniteElement<dim> &fe,
-                        const unsigned int        n_refine,
-                        const unsigned int        n_refine_each_cell);
+                        const unsigned int        n_refine_each_cell,
+                        const unsigned int        config_switch);
 
     void
     run();
@@ -74,20 +231,21 @@ namespace Step20
      * it maps this index to a corrected index such that a conformity condition
      * across faces is met. maps a "standard order"
      */
-    unsigned int
-    flip_dof_order_on_face_rt(typename Triangulation<dim>::cell_iterator &cell,
-                              const unsigned int shape_fun_index,
-                              const unsigned int order);
+    std::pair<unsigned int, bool>
+    adjust_dof_index_and_sign_on_face_rt(
+      typename Triangulation<dim>::cell_iterator &cell,
+      const unsigned int                          shape_fun_index,
+      const unsigned int                          order);
 
-    unsigned int
-    flip_dof_order_on_face_bdm(typename Triangulation<dim>::cell_iterator &cell,
-                               const unsigned int shape_fun_index,
-                               const unsigned int order);
+    std::pair<unsigned int, bool>
+    adjust_dof_index_and_sign_on_face_bdm(
+      typename Triangulation<dim>::cell_iterator &cell,
+      const unsigned int                          shape_fun_index,
+      const unsigned int                          order);
 
     Triangulation<dim> triangulation_coarse;
 
     const unsigned int degree;
-    const unsigned int n_refine;
     const unsigned int n_refine_each_cell;
 
     SmartPointer<const FiniteElement<dim>> fe_ptr;
@@ -102,10 +260,9 @@ namespace Step20
   template <int dim>
   ShapeFunctionWriter<dim>::ShapeFunctionWriter(
     const FiniteElement<dim> &_fe,
-    const unsigned int        n_refine,
-    const unsigned int        n_refine_each_cell)
+    const unsigned int        n_refine_each_cell,
+    const unsigned int        config_switch)
     : degree(_fe.degree)
-    , n_refine(n_refine)
     , n_refine_each_cell(n_refine_each_cell)
     , fe_ptr(&_fe)
     , dof_handler(triangulation)
@@ -128,19 +285,31 @@ namespace Step20
     //                               /* n_cells */ 6,
     //                               /* colorize */ false);
 
-    GridGenerator::moebius(triangulation_coarse,
-                           /* n_cells */ 8,
-                           /* n_rotations by pi/2*/ 3,
-                           /* R */ 2,
-                           /* r */ 0.5);
+    //    GridGenerator::moebius(triangulation_coarse,
+    //                           /* n_cells */ 8,
+    //                           /* n_rotations by pi/2*/ 1,
+    //                           /* R */ 2,
+    //                           /* r */ 0.5);
 
-    //    GridGenerator::hyper_ball(triangulation_coarse);
+    bool face_orientation = false;
+    bool face_flip        = false;
+    bool face_rotation    = false;
+
+    face_orientation = (((config_switch / 4) % 2) == 1);
+    face_flip        = (((config_switch / 2) % 2) == 1);
+    face_rotation    = ((config_switch % 2) == 1);
+
+    generate_test_mesh(triangulation_coarse,
+                       face_orientation,
+                       face_flip,
+                       face_rotation);
+
 
     //    GridTools::distort_random(/* factor */ 0.15,
     //                              triangulation_coarse,
     //                              /* keep_boundary */ false);
 
-    triangulation_coarse.refine_global(n_refine);
+    triangulation_coarse.refine_global(0);
 
     ///////////////////////////////////
     ///////////////////////////////////
@@ -194,6 +363,7 @@ namespace Step20
           } // cell
       }     // if do_plot
   }
+
 
   template <int dim>
   void
@@ -251,13 +421,14 @@ namespace Step20
 
 
   template <int dim>
-  unsigned int
-  ShapeFunctionWriter<dim>::flip_dof_order_on_face_rt(
+  std::pair<unsigned int, bool>
+  ShapeFunctionWriter<dim>::adjust_dof_index_and_sign_on_face_rt(
     typename Triangulation<dim>::cell_iterator &cell,
     const unsigned int                          dof_index,
     const unsigned int                          degree)
   {
     unsigned int new_dof_index = dof_index;
+    bool         sign_flip     = false;
 
     const unsigned int n_dofs_per_face = (*fe_ptr).n_dofs_per_face();
 
@@ -275,11 +446,13 @@ namespace Step20
         unsigned int face_index_from_shape_index =
           dof_index / (n_dofs_per_face);
 
+        const unsigned int n = degree;
+
         /*
          * If face does not have standard orientation permute dofs
          */
         if (((!cell->face_orientation(face_index_from_shape_index)) &&
-             (!cell->face_rotation(!face_index_from_shape_index))) ||
+             (!cell->face_rotation(face_index_from_shape_index))) ||
             ((!cell->face_orientation(face_index_from_shape_index)) &&
              (!cell->face_rotation(face_index_from_shape_index))) ||
             ((cell->face_orientation(face_index_from_shape_index)) &&
@@ -287,86 +460,65 @@ namespace Step20
             ((cell->face_orientation(face_index_from_shape_index)) &&
              (cell->face_rotation(face_index_from_shape_index))))
           {
-            //            if (degree == 2)
-            //              {
-            //                if (dof_index % n_dofs_per_face == 0)
-            //                  {
-            //                    new_dof_index = dof_index;
-            //                  }
-            //                else if (dof_index % n_dofs_per_face == 1)
-            //                  {
-            //                    new_dof_index = dof_index + 1;
-            //                  }
-            //                else if (dof_index % n_dofs_per_face == 2)
-            //                  {
-            //                    new_dof_index = dof_index - 1;
-            //                  }
-            //                else if (dof_index % n_dofs_per_face == 3)
-            //                  {
-            //                    new_dof_index = dof_index;
-            //                  }
-            //              } // degree == 2
-            //            else if (degree == 3)
-            //              {
-            //                if (dof_index % n_dofs_per_face == 0)
-            //                  {
-            //                    new_dof_index = dof_index;
-            //                  }
-            //                else if (dof_index % n_dofs_per_face == 1)
-            //                  {
-            //                    new_dof_index = dof_index + 2;
-            //                  }
-            //                else if (dof_index % n_dofs_per_face == 2)
-            //                  {
-            //                    new_dof_index = dof_index + 4;
-            //                  }
-            //                else if (dof_index % n_dofs_per_face == 3)
-            //                  {
-            //                    new_dof_index = dof_index - 2;
-            //                  }
-            //                else if (dof_index % n_dofs_per_face == 4)
-            //                  {
-            //                    new_dof_index = dof_index;
-            //                  }
-            //                else if (dof_index % n_dofs_per_face == 5)
-            //                  {
-            //                    new_dof_index = dof_index + 2;
-            //                  }
-            //                else if (dof_index % n_dofs_per_face == 6)
-            //                  {
-            //                    new_dof_index = dof_index - 4;
-            //                  }
-            //                else if (dof_index % n_dofs_per_face == 7)
-            //                  {
-            //                    new_dof_index = dof_index - 2;
-            //                  }
-            //                else if (dof_index % n_dofs_per_face == 8)
-            //                  {
-            //                    new_dof_index = dof_index;
-            //                  }
-            //              } // degree == 3
-            //            else if (degree == 4)
-            //              {
-            const unsigned int n              = degree;
-            unsigned int       local_face_dof = dof_index % n_dofs_per_face;
-
+            unsigned int local_face_dof = dof_index % n_dofs_per_face;
             // Row and column
             unsigned int i = local_face_dof % n, j = local_face_dof / n;
 
             unsigned int offset = j + i * n - local_face_dof;
 
             new_dof_index = dof_index + offset;
-            //              } // degree ==4
           } // if face needs dofpermutation
-      }     // if dof_index < n_face_dofs
 
-    return new_dof_index;
+        /*
+         * To determine if a sign flip is necessary we need the new coordinates
+         * of the flipped index
+         */
+        unsigned int local_face_dof = new_dof_index % n_dofs_per_face;
+        // Row and column
+        unsigned int i = local_face_dof % n, j = local_face_dof / n;
+
+        /*
+         * Maybe switch the sign
+         */
+        // flip = false, rotation=true
+        if (!cell->face_flip(face_index_from_shape_index) &&
+            cell->face_rotation(face_index_from_shape_index))
+          {
+            sign_flip = ((i % 2) == 1);
+          }
+        // flip = true, rotation=false
+        else if (cell->face_flip(face_index_from_shape_index) &&
+                 !cell->face_rotation(face_index_from_shape_index))
+          {
+            sign_flip = ((j % 2) == 1) != ((i % 2) == 1);
+          }
+        // flip = true, rotation=true
+        else if (cell->face_flip(face_index_from_shape_index) &&
+                 cell->face_rotation(face_index_from_shape_index))
+          {
+            sign_flip = ((j % 2) == 1);
+          }
+        // flip = false, rotation=false => nothing to do
+
+        /*
+         * If face does not have standard orientation we must do exactly the
+         * opposite. But just in case the face index is even
+         */
+        if (!cell->face_orientation(face_index_from_shape_index))
+          sign_flip = !sign_flip;
+
+      } // if dof_index < n_face_dofs
+
+    std::pair<unsigned int, bool> new_dof_index_and_sign_flip(new_dof_index,
+                                                              sign_flip);
+
+    return new_dof_index_and_sign_flip;
   }
 
 
   template <int dim>
-  unsigned int
-  ShapeFunctionWriter<dim>::flip_dof_order_on_face_bdm(
+  std::pair<unsigned int, bool>
+  ShapeFunctionWriter<dim>::adjust_dof_index_and_sign_on_face_bdm(
     typename Triangulation<dim>::cell_iterator &cell,
     const unsigned int                          dof_index,
     const unsigned int                          degree)
@@ -393,7 +545,7 @@ namespace Step20
          * If face does not have standard orientation permute dofs
          */
         if (((!cell->face_orientation(face_index_from_shape_index)) &&
-             (!cell->face_rotation(!face_index_from_shape_index))) ||
+             (!cell->face_rotation(face_index_from_shape_index))) ||
             ((!cell->face_orientation(face_index_from_shape_index)) &&
              (!cell->face_rotation(face_index_from_shape_index))) ||
             ((cell->face_orientation(face_index_from_shape_index)) &&
@@ -446,7 +598,10 @@ namespace Step20
           }     // if face flipped
       }         // if dof_index < n_face_dofs
 
-    return new_dof_index;
+    std::pair<unsigned int, bool> new_dof_index_and_sign_flip(new_dof_index,
+                                                              false);
+
+    return new_dof_index_and_sign_flip;
   }
 
 
@@ -456,12 +611,13 @@ namespace Step20
   ShapeFunctionWriter<dim>::output_results(
     typename Triangulation<dim>::cell_iterator &cell)
   {
-    const bool flip = true;
+    const bool adjust_index_and_sign = true;
 
-    std::function<unsigned int(typename Triangulation<dim>::cell_iterator &,
-                               const unsigned int,
-                               const unsigned int)>
-      flip_dof_order_on_face;
+    std::function<std::pair<unsigned int, bool>(
+      typename Triangulation<dim>::cell_iterator &,
+      const unsigned int,
+      const unsigned int)>
+      adjust_dof_index_and_sign_on_face;
 
     std::string fe_rt_str(
       "FE_RaviartThomas<" + Utilities::int_to_string(dim, 1) + ">(" +
@@ -472,27 +628,27 @@ namespace Step20
 
     if (fe_rt_str.compare((*fe_ptr).get_name()) == 0)
       {
-        flip_dof_order_on_face =
-          std::bind(&ShapeFunctionWriter<dim>::flip_dof_order_on_face_rt,
-                    this,
-                    std::placeholders::_1,
-                    std::placeholders::_2,
-                    std::placeholders::_3);
+        adjust_dof_index_and_sign_on_face = std::bind(
+          &ShapeFunctionWriter<dim>::adjust_dof_index_and_sign_on_face_rt,
+          this,
+          std::placeholders::_1,
+          std::placeholders::_2,
+          std::placeholders::_3);
       }
     else if (fe_bdm_str.compare((*fe_ptr).get_name()) == 0)
       {
-        flip_dof_order_on_face =
-          std::bind(&ShapeFunctionWriter<dim>::flip_dof_order_on_face_bdm,
-                    this,
-                    std::placeholders::_1,
-                    std::placeholders::_2,
-                    std::placeholders::_3);
+        adjust_dof_index_and_sign_on_face = std::bind(
+          &ShapeFunctionWriter<dim>::adjust_dof_index_and_sign_on_face_bdm,
+          this,
+          std::placeholders::_1,
+          std::placeholders::_2,
+          std::placeholders::_3);
       }
 
     DataOut<dim> data_out;
     data_out.attach_dof_handler(dof_handler);
 
-    if (flip)
+    if (adjust_index_and_sign)
       {
         std::cout << "Cell with id   " << cell->id().to_string()
                   << "   has permuted dofs on faces:" << std::endl;
@@ -501,20 +657,26 @@ namespace Step20
     for (unsigned int dof_index_in = 0; dof_index_in < n_face_dofs;
          ++dof_index_in)
       {
-        const unsigned int dof_index =
-          (flip ? flip_dof_order_on_face(cell, dof_index_in, (*fe_ptr).degree) :
-                  dof_index_in);
+        const std::pair<unsigned int, bool> dof_index_and_sign =
+          (adjust_index_and_sign ?
+             adjust_dof_index_and_sign_on_face(cell,
+                                               dof_index_in,
+                                               (*fe_ptr).degree) :
+             std::pair<unsigned int, bool>(dof_index_in, false));
 
-        if (flip)
+        const unsigned int dof_index = dof_index_and_sign.first;
+
+        if (dof_index_and_sign.second)
           {
-            if ((dof_index_in - flip_dof_order_on_face(cell,
-                                                       dof_index_in,
-                                                       (*fe_ptr).degree)) != 0)
+            basis[dof_index] *= -1.0;
+          }
+
+        if (adjust_index_and_sign)
+          {
+            if (((dof_index_in - dof_index) != 0) || dof_index_and_sign.second)
               {
-                std::cout << "   " << dof_index_in << " ---> "
-                          << flip_dof_order_on_face(cell,
-                                                    dof_index_in,
-                                                    (*fe_ptr).degree)
+                std::cout << "   " << dof_index_in << " ---> " << dof_index
+                          << "   sign change = " << dof_index_and_sign.second
                           << std::endl;
               }
           }
@@ -552,17 +714,17 @@ namespace Step20
 
         output_results(cell);
 
-        cell++;
-        cell++;
-        cell++;
-        cell++;
-        cell++;
-        cell++;
-        cell++;
-        make_grid_and_dofs_and_project(cell);
-
-        output_results(cell);
-        break;
+        //        cell++;
+        //        cell++;
+        //        cell++;
+        //        cell++;
+        //        cell++;
+        //        cell++;
+        //        cell++;
+        //        make_grid_and_dofs_and_project(cell);
+        //
+        //        output_results(cell);
+        //        break;
       }
   }
 } // namespace Step20
@@ -587,6 +749,7 @@ main(int argc, char *argv[])
     }
 
   unsigned int n_refine_each_cell = 0;
+  unsigned int config_switch      = 4; // (true | false | false)
 
   std::list<std::string> args;
   for (int i = 1; i < argc; ++i)
@@ -631,6 +794,41 @@ main(int argc, char *argv[])
               args.pop_front();
             }
         }
+      else if (args.front() == std::string("-c"))
+        {
+          if (args.size() == 1) /* This is not robust. */
+            {
+              std::cerr << "Error: flag '-c' must be followed by the "
+                        << "cell configuraation." << std::endl;
+              exit(1);
+            }
+          else
+            {
+              args.pop_front();
+
+              try
+                {
+                  std::size_t pos;
+                  config_switch = std::stoi(args.front(), &pos);
+                  if (pos < args.front().size())
+                    {
+                      std::cerr
+                        << "Trailing characters after number: " << args.front()
+                        << '\n';
+                    }
+                }
+              catch (std::invalid_argument const &ex)
+                {
+                  std::cerr << "Invalid number: " << args.front() << '\n';
+                }
+              catch (std::out_of_range const &ex)
+                {
+                  std::cerr << "Number out of range: " << args.front() << '\n';
+                }
+
+              args.pop_front();
+            }
+        }
       else
         {
           std::cerr << "Unknown command line option: " << args.front()
@@ -643,11 +841,8 @@ main(int argc, char *argv[])
     {
       using namespace Step20;
 
-      const int dim = 3;
-
-
-      const unsigned int n_refine  = 0; // refines the test domain itself
-      const unsigned int fe_degree = 3;
+      const int          dim       = 3;
+      const unsigned int fe_degree = 1;
 
       //      FE_BDM<dim> fe(fe_degree);
       FE_RaviartThomas<dim> fe(fe_degree);
@@ -655,8 +850,8 @@ main(int argc, char *argv[])
 
       {
         ShapeFunctionWriter<dim> shape_function_writer(fe,
-                                                       n_refine,
-                                                       n_refine_each_cell);
+                                                       n_refine_each_cell,
+                                                       config_switch);
         shape_function_writer.run();
       }
     }
