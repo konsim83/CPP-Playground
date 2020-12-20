@@ -994,15 +994,14 @@ main(int argc, char *argv[])
             /*
              * Solve with natural boundary conditions
              */
-            //            MixedLaplaceProblem<2>
-            //            mixed_laplace_problem(fe_degree,
-            //                                                         n_refine,
-            //                                                         /*
-            //                                                         natural_bc
-            //                                                          */
-            //                                                         true,
-            //                                                         problematic_domain);
-            //            mixed_laplace_problem.run(project);
+            MixedLaplaceProblem<2> mixed_laplace_problem(fe_degree,
+                                                         n_refine,
+                                                         /*
+                                                         natural_bc
+                                                          */
+                                                         true,
+                                                         problematic_domain);
+            mixed_laplace_problem.run(project);
           }
 
           {
@@ -1027,15 +1026,14 @@ main(int argc, char *argv[])
             /*
              * Solve with natural boundary conditions
              */
-            //            MixedLaplaceProblem<3>
-            //            mixed_laplace_problem(fe_degree,
-            //                                                         n_refine,
-            //                                                         /*
-            //                                                         natural_bc
-            //                                                          */
-            //                                                         true,
-            //                                                         problematic_domain);
-            //            mixed_laplace_problem.run(project);
+            MixedLaplaceProblem<3> mixed_laplace_problem(fe_degree,
+                                                         n_refine,
+                                                         /*
+                                                         natural_bc
+                                                          */
+                                                         true,
+                                                         problematic_domain);
+            mixed_laplace_problem.run(project);
           }
 
           {
