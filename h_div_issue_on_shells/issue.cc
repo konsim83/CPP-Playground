@@ -53,7 +53,8 @@ namespace Step20
   generate_test_mesh(Triangulation<3> &triangulation,
                      const bool        face_orientation,
                      const bool        face_flip,
-                     const bool        face_rotation)
+                     const bool        face_rotation,
+                     const bool        manipulate_first_cube)
   {
     std::vector<Point<3>>    vertices;
     const unsigned int       n_cells = 2;
@@ -62,14 +63,14 @@ namespace Step20
     const Point<3> p(1, 0, 0);
 
     // Corner points of the cube [0,1]^3
-    static const std::array<Point<3>, 12> hexahedron = {{{0, 0, 0},   //
-                                                         {1, 0, 0},   //
-                                                         {0, 1, 0},   //
-                                                         {1, 1, 0},   //
-                                                         {0, 0, 1},   //
-                                                         {1, 0, 1},   //
-                                                         {0, 1, 1},   //
-                                                         {1, 1, 1},   //
+    static const std::array<Point<3>, 12> hexahedron = {{{0, 0, 0},   // 0
+                                                         {1, 0, 0},   // 1
+                                                         {0, 1, 0},   // 2
+                                                         {1, 1, 0},   // 3
+                                                         {0, 0, 1},   // 4
+                                                         {1, 0, 1},   // 5
+                                                         {0, 1, 1},   // 6
+                                                         {1, 1, 1},   // 7
                                                          {2, 0, 0},   // 8
                                                          {2, 1, 0},   // 9
                                                          {2, 0, 1},   // 10
@@ -79,110 +80,213 @@ namespace Step20
       vertices.push_back(hexahedron[i]);
 
     int cell_vertices[n_cells][8] = {
-      {0, 1, 2, 3, 4, 5, 6, 7},        // unit cube
-      {8, 9, 10, 11, 12, 13, 14, 15}}; // shifted cube
+      {0, 1, 2, 3, 4, 5, 6, 7},    // unit cube
+      {1, 8, 3, 9, 5, 10, 7, 11}}; // shifted cube
 
     // binary to case number
     int this_case = 4 * face_orientation + 2 * face_flip + face_rotation;
 
-    switch (this_case)
+    if (manipulate_first_cube)
       {
-          case 0: {
-            cell_vertices[1][0] = 8;
-            cell_vertices[1][1] = 1;
-            cell_vertices[1][2] = 10;
-            cell_vertices[1][3] = 5;
-            cell_vertices[1][4] = 9;
-            cell_vertices[1][5] = 3;
-            cell_vertices[1][6] = 11;
-            cell_vertices[1][7] = 7;
-            break;
-          }
+        switch (this_case)
+          {
+              case 0: {
+                cell_vertices[0][0] = 1;
+                cell_vertices[0][1] = 0;
+                cell_vertices[0][2] = 5;
+                cell_vertices[0][3] = 4;
+                cell_vertices[0][4] = 3;
+                cell_vertices[0][5] = 2;
+                cell_vertices[0][6] = 7;
+                cell_vertices[0][7] = 6;
+                break;
+              }
 
-          case 1: {
-            cell_vertices[1][0] = 10;
-            cell_vertices[1][1] = 5;
-            cell_vertices[1][2] = 11;
-            cell_vertices[1][3] = 7;
-            cell_vertices[1][4] = 8;
-            cell_vertices[1][5] = 1;
-            cell_vertices[1][6] = 9;
-            cell_vertices[1][7] = 3;
-            break;
-          }
+              case 1: {
+                cell_vertices[0][0] = 5;
+                cell_vertices[0][1] = 4;
+                cell_vertices[0][2] = 7;
+                cell_vertices[0][3] = 6;
+                cell_vertices[0][4] = 1;
+                cell_vertices[0][5] = 0;
+                cell_vertices[0][6] = 3;
+                cell_vertices[0][7] = 2;
+                break;
+              }
 
-          case 2: {
-            cell_vertices[1][0] = 11;
-            cell_vertices[1][1] = 7;
-            cell_vertices[1][2] = 9;
-            cell_vertices[1][3] = 3;
-            cell_vertices[1][4] = 10;
-            cell_vertices[1][5] = 5;
-            cell_vertices[1][6] = 8;
-            cell_vertices[1][7] = 1;
-            break;
-          }
+              case 2: {
+                cell_vertices[0][0] = 7;
+                cell_vertices[0][1] = 6;
+                cell_vertices[0][2] = 3;
+                cell_vertices[0][3] = 2;
+                cell_vertices[0][4] = 5;
+                cell_vertices[0][5] = 4;
+                cell_vertices[0][6] = 1;
+                cell_vertices[0][7] = 0;
+                break;
+              }
+              case 3: {
+                cell_vertices[0][0] = 3;
+                cell_vertices[0][1] = 2;
+                cell_vertices[0][2] = 1;
+                cell_vertices[0][3] = 0;
+                cell_vertices[0][4] = 7;
+                cell_vertices[0][5] = 6;
+                cell_vertices[0][6] = 5;
+                cell_vertices[0][7] = 4;
+                break;
+              }
 
-          case 3: {
-            cell_vertices[1][0] = 9;
-            cell_vertices[1][1] = 3;
-            cell_vertices[1][2] = 8;
-            cell_vertices[1][3] = 1;
-            cell_vertices[1][4] = 11;
-            cell_vertices[1][5] = 7;
-            cell_vertices[1][6] = 10;
-            cell_vertices[1][7] = 5;
-            break;
-          }
+              case 4: {
+                cell_vertices[0][0] = 0;
+                cell_vertices[0][1] = 1;
+                cell_vertices[0][2] = 2;
+                cell_vertices[0][3] = 3;
+                cell_vertices[0][4] = 4;
+                cell_vertices[0][5] = 5;
+                cell_vertices[0][6] = 6;
+                cell_vertices[0][7] = 7;
+                break;
+              }
 
-          case 4: {
-            cell_vertices[1][0] = 1;
-            cell_vertices[1][1] = 8;
-            cell_vertices[1][2] = 3;
-            cell_vertices[1][3] = 9;
-            cell_vertices[1][4] = 5;
-            cell_vertices[1][5] = 10;
-            cell_vertices[1][6] = 7;
-            cell_vertices[1][7] = 11;
-            break;
-          }
+              case 5: {
+                cell_vertices[0][0] = 2;
+                cell_vertices[0][1] = 3;
+                cell_vertices[0][2] = 6;
+                cell_vertices[0][3] = 7;
+                cell_vertices[0][4] = 0;
+                cell_vertices[0][5] = 1;
+                cell_vertices[0][6] = 4;
+                cell_vertices[0][7] = 5;
+                break;
+              }
 
-          case 5: {
-            cell_vertices[1][0] = 5;
-            cell_vertices[1][1] = 10;
-            cell_vertices[1][2] = 1;
-            cell_vertices[1][3] = 8;
-            cell_vertices[1][4] = 7;
-            cell_vertices[1][5] = 11;
-            cell_vertices[1][6] = 3;
-            cell_vertices[1][7] = 9;
-            break;
-          }
+              case 6: {
+                cell_vertices[0][0] = 6;
+                cell_vertices[0][1] = 7;
+                cell_vertices[0][2] = 4;
+                cell_vertices[0][3] = 5;
+                cell_vertices[0][4] = 2;
+                cell_vertices[0][5] = 3;
+                cell_vertices[0][6] = 0;
+                cell_vertices[0][7] = 1;
+                break;
+              }
 
-          case 6: {
-            cell_vertices[1][0] = 7;
-            cell_vertices[1][1] = 11;
-            cell_vertices[1][2] = 5;
-            cell_vertices[1][3] = 10;
-            cell_vertices[1][4] = 3;
-            cell_vertices[1][5] = 9;
-            cell_vertices[1][6] = 1;
-            cell_vertices[1][7] = 8;
-            break;
-          }
+              case 7: {
+                cell_vertices[0][0] = 4;
+                cell_vertices[0][1] = 5;
+                cell_vertices[0][2] = 0;
+                cell_vertices[0][3] = 1;
+                cell_vertices[0][4] = 6;
+                cell_vertices[0][5] = 7;
+                cell_vertices[0][6] = 2;
+                cell_vertices[0][7] = 3;
+                break;
+              }
+          } // switch
+      }
+    else
+      {
+        switch (this_case)
+          {
+              case 0: {
+                cell_vertices[1][0] = 8;
+                cell_vertices[1][1] = 1;
+                cell_vertices[1][2] = 10;
+                cell_vertices[1][3] = 5;
+                cell_vertices[1][4] = 9;
+                cell_vertices[1][5] = 3;
+                cell_vertices[1][6] = 11;
+                cell_vertices[1][7] = 7;
+                break;
+              }
 
-          case 7: {
-            cell_vertices[1][0] = 3;
-            cell_vertices[1][1] = 9;
-            cell_vertices[1][2] = 7;
-            cell_vertices[1][3] = 11;
-            cell_vertices[1][4] = 1;
-            cell_vertices[1][5] = 8;
-            cell_vertices[1][6] = 5;
-            cell_vertices[1][7] = 10;
-            break;
-          }
-      } // switch
+              case 1: {
+                cell_vertices[1][0] = 10;
+                cell_vertices[1][1] = 5;
+                cell_vertices[1][2] = 11;
+                cell_vertices[1][3] = 7;
+                cell_vertices[1][4] = 8;
+                cell_vertices[1][5] = 1;
+                cell_vertices[1][6] = 9;
+                cell_vertices[1][7] = 3;
+                break;
+              }
+
+              case 2: {
+                cell_vertices[1][0] = 11;
+                cell_vertices[1][1] = 7;
+                cell_vertices[1][2] = 9;
+                cell_vertices[1][3] = 3;
+                cell_vertices[1][4] = 10;
+                cell_vertices[1][5] = 5;
+                cell_vertices[1][6] = 8;
+                cell_vertices[1][7] = 1;
+                break;
+              }
+
+              case 3: {
+                cell_vertices[1][0] = 9;
+                cell_vertices[1][1] = 3;
+                cell_vertices[1][2] = 8;
+                cell_vertices[1][3] = 1;
+                cell_vertices[1][4] = 11;
+                cell_vertices[1][5] = 7;
+                cell_vertices[1][6] = 10;
+                cell_vertices[1][7] = 5;
+                break;
+              }
+
+              case 4: {
+                cell_vertices[1][0] = 1;
+                cell_vertices[1][1] = 8;
+                cell_vertices[1][2] = 3;
+                cell_vertices[1][3] = 9;
+                cell_vertices[1][4] = 5;
+                cell_vertices[1][5] = 10;
+                cell_vertices[1][6] = 7;
+                cell_vertices[1][7] = 11;
+                break;
+              }
+
+              case 5: {
+                cell_vertices[1][0] = 5;
+                cell_vertices[1][1] = 10;
+                cell_vertices[1][2] = 1;
+                cell_vertices[1][3] = 8;
+                cell_vertices[1][4] = 7;
+                cell_vertices[1][5] = 11;
+                cell_vertices[1][6] = 3;
+                cell_vertices[1][7] = 9;
+                break;
+              }
+
+              case 6: {
+                cell_vertices[1][0] = 7;
+                cell_vertices[1][1] = 11;
+                cell_vertices[1][2] = 5;
+                cell_vertices[1][3] = 10;
+                cell_vertices[1][4] = 3;
+                cell_vertices[1][5] = 9;
+                cell_vertices[1][6] = 1;
+                cell_vertices[1][7] = 8;
+                break;
+              }
+
+              case 7: {
+                cell_vertices[1][0] = 3;
+                cell_vertices[1][1] = 9;
+                cell_vertices[1][2] = 7;
+                cell_vertices[1][3] = 11;
+                cell_vertices[1][4] = 1;
+                cell_vertices[1][5] = 8;
+                cell_vertices[1][6] = 5;
+                cell_vertices[1][7] = 10;
+                break;
+              }
+          } // switch
+      }
 
     cells.resize(n_cells, CellData<3>());
 
@@ -291,18 +395,18 @@ namespace Step20
     //                           /* R */ 2,
     //                           /* r */ 0.5);
 
-    bool face_orientation = false;
-    bool face_flip        = false;
-    bool face_rotation    = false;
 
-    face_orientation = (((config_switch / 4) % 2) == 1);
-    face_flip        = (((config_switch / 2) % 2) == 1);
-    face_rotation    = ((config_switch % 2) == 1);
+    bool face_orientation = (((config_switch / 4) % 2) == 1);
+    bool face_flip        = (((config_switch / 2) % 2) == 1);
+    bool face_rotation    = ((config_switch % 2) == 1);
+
+    bool manipulate_first_cube = false;
 
     generate_test_mesh(triangulation_coarse,
                        face_orientation,
                        face_flip,
-                       face_rotation);
+                       face_rotation,
+                       manipulate_first_cube);
 
 
     //    GridTools::distort_random(/* factor */ 0.15,
@@ -484,7 +588,10 @@ namespace Step20
         if (!cell->face_flip(face_index_from_shape_index) &&
             cell->face_rotation(face_index_from_shape_index))
           {
-            sign_flip = ((i % 2) == 1);
+            if (cell->face_orientation(face_index_from_shape_index))
+              sign_flip = ((i % 2) == 1);
+            else
+              sign_flip = ((j % 2) == 1);
           }
         // flip = true, rotation=false
         else if (cell->face_flip(face_index_from_shape_index) &&
@@ -496,16 +603,12 @@ namespace Step20
         else if (cell->face_flip(face_index_from_shape_index) &&
                  cell->face_rotation(face_index_from_shape_index))
           {
-            sign_flip = ((j % 2) == 1);
+            if (cell->face_orientation(face_index_from_shape_index))
+              sign_flip = ((j % 2) == 1);
+            else
+              sign_flip = ((i % 2) == 1);
           }
         // flip = false, rotation=false => nothing to do
-
-        /*
-         * If face does not have standard orientation we must do exactly the
-         * opposite. But just in case the face index is even
-         */
-        if (!cell->face_orientation(face_index_from_shape_index))
-          sign_flip = !sign_flip;
 
       } // if dof_index < n_face_dofs
 
@@ -842,7 +945,7 @@ main(int argc, char *argv[])
       using namespace Step20;
 
       const int          dim       = 3;
-      const unsigned int fe_degree = 1;
+      const unsigned int fe_degree = 2;
 
       //      FE_BDM<dim> fe(fe_degree);
       FE_RaviartThomas<dim> fe(fe_degree);
