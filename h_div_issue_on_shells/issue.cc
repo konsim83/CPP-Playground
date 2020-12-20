@@ -10,8 +10,10 @@
 #include <deal.II/dofs/dof_tools.h>
 
 #include <deal.II/fe/fe_bdm.h>
+#include <deal.II/fe/fe_bernardi_raugel.h>
 #include <deal.II/fe/fe_dgq.h>
 #include <deal.II/fe/fe_nedelec.h>
+#include <deal.II/fe/fe_nedelec_sz.h>
 #include <deal.II/fe/fe_raviart_thomas.h>
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/fe/fe_values.h>
@@ -294,9 +296,14 @@ namespace Step20
       {
         for (const unsigned int vertex_index :
              GeometryInfo<3>::vertex_indices())
-          cells[cell_index].vertices[vertex_index] =
-            cell_vertices[cell_index][vertex_index];
-        cells[cell_index].material_id = 0;
+          //        for (unsigned int vertex_index = 0;
+          //        GeometryInfo<3>::vertices_per_cell;
+          //             ++vertex_index)
+          {
+            cells[cell_index].vertices[vertex_index] =
+              cell_vertices[cell_index][vertex_index];
+            cells[cell_index].material_id = 0;
+          }
       }
 
     //    GridReordering<3>::invert_all_cells_of_negative_grid(vertices, cells);
@@ -358,7 +365,16 @@ namespace Step20
     AffineConstraints<double>              constraints;
     std::vector<Vector<double>>            basis;
 
-    unsigned int n_face_dofs;
+    unsigned int n_dofs_per_cell;
+    unsigned int n_dofs_per_face;
+    unsigned int n_dofs_per_quad;
+    unsigned int n_dofs_per_line;
+    unsigned int n_dofs_per_vertex;
+
+    unsigned int first_line_index;
+    unsigned int first_quad_index;
+    unsigned int first_face_line_index;
+    unsigned int first_face_quad_index;
   };
 
   template <int dim>
@@ -375,8 +391,32 @@ namespace Step20
     /*
      * Assume all faces have the same number of dofs
      */
-    n_face_dofs =
-      (*fe_ptr).n_dofs_per_face() * GeometryInfo<dim>::faces_per_cell;
+    n_dofs_per_cell   = (*fe_ptr).n_dofs_per_cell();
+    n_dofs_per_face   = (*fe_ptr).n_dofs_per_face();
+    n_dofs_per_quad   = (*fe_ptr).n_dofs_per_quad();
+    n_dofs_per_line   = (*fe_ptr).n_dofs_per_line();
+    n_dofs_per_vertex = (*fe_ptr).n_dofs_per_vertex();
+
+    first_line_index      = (*fe_ptr).get_first_line_index();
+    first_quad_index      = (*fe_ptr).get_first_quad_index();
+    first_face_line_index = (*fe_ptr).get_first_face_line_index();
+    first_face_quad_index = (*fe_ptr).get_first_face_quad_index();
+
+    std::cout << "Element Info:  " << std::endl
+              << "   n_dofs_per_cell      : " << n_dofs_per_cell << std::endl
+              << "   n_dofs_per_face      : " << n_dofs_per_face << std::endl
+              << "   n_dofs_per_quad      : " << n_dofs_per_quad << std::endl
+              << "   n_dofs_per_line      : " << n_dofs_per_line << std::endl
+              << "   n_dofs_per_vertex    : " << n_dofs_per_vertex << std::endl
+              << "   first_line_index     : " << first_line_index << std::endl
+              << "   first_quad_index     : " << first_quad_index << std::endl
+              << "   first_face_line_index: " << first_face_line_index
+              << std::endl
+              << "   first_face_quad_index: " << first_face_quad_index
+              << std::endl
+              << std::endl
+              << std::endl;
+
 
     ///////////////////////////////////
     ///////////////////////////////////
@@ -395,19 +435,19 @@ namespace Step20
     //                           /* R */ 2,
     //                           /* r */ 0.5);
 
+    {
+      bool face_orientation = (((config_switch / 4) % 2) == 1);
+      bool face_flip        = (((config_switch / 2) % 2) == 1);
+      bool face_rotation    = ((config_switch % 2) == 1);
 
-    bool face_orientation = (((config_switch / 4) % 2) == 1);
-    bool face_flip        = (((config_switch / 2) % 2) == 1);
-    bool face_rotation    = ((config_switch % 2) == 1);
+      bool manipulate_first_cube = true;
 
-    bool manipulate_first_cube = false;
-
-    generate_test_mesh(triangulation_coarse,
-                       face_orientation,
-                       face_flip,
-                       face_rotation,
-                       manipulate_first_cube);
-
+      generate_test_mesh(triangulation_coarse,
+                         face_orientation,
+                         face_flip,
+                         face_rotation,
+                         manipulate_first_cube);
+    }
 
     //    GridTools::distort_random(/* factor */ 0.15,
     //                              triangulation_coarse,
@@ -511,8 +551,8 @@ namespace Step20
     /*
      * Project only face dofs
      */
-    std::cout << "Projecting   " << n_face_dofs << "   face dofs ...";
-    for (unsigned int i = 0; i < n_face_dofs; ++i)
+    std::cout << "Projecting   " << n_dofs_per_cell << "   dofs ...";
+    for (unsigned int i = 0; i < n_dofs_per_cell; ++i)
       {
         basis[i].reinit(dof_handler.n_dofs());
 
@@ -550,6 +590,14 @@ namespace Step20
         unsigned int face_index_from_shape_index =
           dof_index / (n_dofs_per_face);
 
+        /*
+         * If we are on a face that does not have standard orientation we must
+         * flip signs, correction may be necessary later for some face dofs
+         * though
+         */
+        if (!cell->face_orientation(face_index_from_shape_index))
+          sign_flip = true;
+
         const unsigned int n = degree;
 
         /*
@@ -557,10 +605,6 @@ namespace Step20
          */
         if (((!cell->face_orientation(face_index_from_shape_index)) &&
              (!cell->face_rotation(face_index_from_shape_index))) ||
-            ((!cell->face_orientation(face_index_from_shape_index)) &&
-             (!cell->face_rotation(face_index_from_shape_index))) ||
-            ((cell->face_orientation(face_index_from_shape_index)) &&
-             (cell->face_rotation(face_index_from_shape_index))) ||
             ((cell->face_orientation(face_index_from_shape_index)) &&
              (cell->face_rotation(face_index_from_shape_index))))
           {
@@ -568,14 +612,15 @@ namespace Step20
             // Row and column
             unsigned int i = local_face_dof % n, j = local_face_dof / n;
 
+            // We flip across the diagonal
             unsigned int offset = j + i * n - local_face_dof;
 
             new_dof_index = dof_index + offset;
-          } // if face needs dofpermutation
+          } // if face needs dof permutation
 
         /*
-         * To determine if a sign flip is necessary we need the new coordinates
-         * of the flipped index
+         * To determine if a (corrected) sign flip is necessary we need the new
+         * coordinates of the flipped index
          */
         unsigned int local_face_dof = new_dof_index % n_dofs_per_face;
         // Row and column
@@ -588,6 +633,7 @@ namespace Step20
         if (!cell->face_flip(face_index_from_shape_index) &&
             cell->face_rotation(face_index_from_shape_index))
           {
+            // Row and column may be switched
             if (cell->face_orientation(face_index_from_shape_index))
               sign_flip = ((i % 2) == 1);
             else
@@ -597,12 +643,14 @@ namespace Step20
         else if (cell->face_flip(face_index_from_shape_index) &&
                  !cell->face_rotation(face_index_from_shape_index))
           {
+            // This case is symmetric (although row and column may be switched)
             sign_flip = ((j % 2) == 1) != ((i % 2) == 1);
           }
         // flip = true, rotation=true
         else if (cell->face_flip(face_index_from_shape_index) &&
                  cell->face_rotation(face_index_from_shape_index))
           {
+            // Row and column may be switched
             if (cell->face_orientation(face_index_from_shape_index))
               sign_flip = ((j % 2) == 1);
             else
@@ -649,10 +697,6 @@ namespace Step20
          */
         if (((!cell->face_orientation(face_index_from_shape_index)) &&
              (!cell->face_rotation(face_index_from_shape_index))) ||
-            ((!cell->face_orientation(face_index_from_shape_index)) &&
-             (!cell->face_rotation(face_index_from_shape_index))) ||
-            ((cell->face_orientation(face_index_from_shape_index)) &&
-             (cell->face_rotation(face_index_from_shape_index))) ||
             ((cell->face_orientation(face_index_from_shape_index)) &&
              (cell->face_rotation(face_index_from_shape_index))))
           {
@@ -714,7 +758,7 @@ namespace Step20
   ShapeFunctionWriter<dim>::output_results(
     typename Triangulation<dim>::cell_iterator &cell)
   {
-    const bool adjust_index_and_sign = true;
+    const bool adjust_index_and_sign = false;
 
     std::function<std::pair<unsigned int, bool>(
       typename Triangulation<dim>::cell_iterator &,
@@ -757,7 +801,7 @@ namespace Step20
                   << "   has permuted dofs on faces:" << std::endl;
       }
 
-    for (unsigned int dof_index_in = 0; dof_index_in < n_face_dofs;
+    for (unsigned int dof_index_in = 0; dof_index_in < n_dofs_per_cell;
          ++dof_index_in)
       {
         const std::pair<unsigned int, bool> dof_index_and_sign =
@@ -816,18 +860,6 @@ namespace Step20
         make_grid_and_dofs_and_project(cell);
 
         output_results(cell);
-
-        //        cell++;
-        //        cell++;
-        //        cell++;
-        //        cell++;
-        //        cell++;
-        //        cell++;
-        //        cell++;
-        //        make_grid_and_dofs_and_project(cell);
-        //
-        //        output_results(cell);
-        //        break;
       }
   }
 } // namespace Step20
@@ -945,11 +977,13 @@ main(int argc, char *argv[])
       using namespace Step20;
 
       const int          dim       = 3;
-      const unsigned int fe_degree = 2;
+      const unsigned int fe_degree = 1;
 
       //      FE_BDM<dim> fe(fe_degree);
       FE_RaviartThomas<dim> fe(fe_degree);
       //      FE_Nedelec<dim> fe(fe_degree);
+      //      FE_NedelecSZ<dim> fe(fe_degree);
+      //      FE_BernardiRaugel<dim> fe(fe_degree);
 
       {
         ShapeFunctionWriter<dim> shape_function_writer(fe,
