@@ -166,6 +166,18 @@ namespace Step20
                                        2,
                                        /* n_cells */ (dim == 3) ? 6 : 12,
                                        /* colorize */ true);
+
+            //            bool face_orientation = false;
+            //            bool face_flip        = true;
+            //            bool face_rotation    = true;
+            //
+            //            bool manipulate_first_cube = false;
+            //
+            //            GridGenerator::orientation_test_mesh(triangulation,
+            //                                                 face_orientation,
+            //                                                 face_flip,
+            //                                                 face_rotation,
+            //                                                 manipulate_first_cube);
           }
         else
           {
@@ -198,13 +210,21 @@ namespace Step20
         GridGenerator::hyper_cube(triangulation, -1, 1, /* colorize */ true);
       }
 
-    //    GridTools::distort_random(/* factor */ 0.15,
-    //                              triangulation,
-    //                              /* keep_boundary */ false);
-
     print_mesh_info();
 
     triangulation.refine_global(n_refine);
+
+    if (true)
+      {
+        unsigned int i = 0;
+        for (auto cell : triangulation.active_cell_iterators())
+          {
+            if (i % 2 == 0)
+              cell->set_refine_flag();
+            ++i;
+          }
+        triangulation.execute_coarsening_and_refinement();
+      }
 
     dof_handler.distribute_dofs(fe);
 
@@ -328,10 +348,6 @@ namespace Step20
 
         GridGenerator::hyper_cube(triangulation, -1, 1, /* colorize */ false);
       }
-
-    //    GridTools::distort_random(/* factor */ 0.15,
-    //                              triangulation,
-    //                              /* keep_boundary */ false);
 
     print_mesh_info();
 
@@ -863,6 +879,7 @@ namespace Step20
     else
       {
         make_grid_and_dofs();
+
         assemble_system();
         solve();
         compute_errors();
@@ -886,8 +903,8 @@ main(int argc, char *argv[])
       exit(1);
     }
 
-  unsigned int n_refine = 0;
-  unsigned int dim      = 0;
+  unsigned int n_refine  = 0;
+  unsigned int fe_degree = 0;
 
   std::list<std::string> args;
   for (int i = 1; i < argc; ++i)
@@ -947,7 +964,7 @@ main(int argc, char *argv[])
               try
                 {
                   std::size_t pos;
-                  dim = std::stoi(args.front(), &pos);
+                  fe_degree = std::stoi(args.front(), &pos);
                   if (pos < args.front().size())
                     {
                       std::cerr
@@ -982,11 +999,9 @@ main(int argc, char *argv[])
     {
       using namespace Step20;
 
-      const unsigned int fe_degree = 1;
-
-      const bool problematic_domain = true;
-
-      const bool project = false;
+      const unsigned int dim                = 3;
+      const bool         problematic_domain = true;
+      const bool         project            = false;
 
       if (dim == 2)
         {

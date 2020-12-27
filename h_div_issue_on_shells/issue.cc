@@ -64,22 +64,21 @@ namespace Step20
 
     const Point<3> p(1, 0, 0);
 
-    // Corner points of the cube [0,1]^3
-    static const std::array<Point<3>, 12> hexahedron = {{{0, 0, 0},   // 0
-                                                         {1, 0, 0},   // 1
-                                                         {0, 1, 0},   // 2
-                                                         {1, 1, 0},   // 3
-                                                         {0, 0, 1},   // 4
-                                                         {1, 0, 1},   // 5
-                                                         {0, 1, 1},   // 6
-                                                         {1, 1, 1},   // 7
-                                                         {2, 0, 0},   // 8
-                                                         {2, 1, 0},   // 9
-                                                         {2, 0, 1},   // 10
-                                                         {2, 1, 1}}}; // 11
+    static const std::array<Point<3>, 12> double_cube = {{{0, 0, 0},   // 0
+                                                          {1, 0, 0},   // 1
+                                                          {0, 1, 0},   // 2
+                                                          {1, 1, 0},   // 3
+                                                          {0, 0, 1},   // 4
+                                                          {1, 0, 1},   // 5
+                                                          {0, 1, 1},   // 6
+                                                          {1, 1, 1},   // 7
+                                                          {2, 0, 0},   // 8
+                                                          {2, 1, 0},   // 9
+                                                          {2, 0, 1},   // 10
+                                                          {2, 1, 1}}}; // 11
 
     for (unsigned int i = 0; i < 12; ++i)
-      vertices.push_back(hexahedron[i]);
+      vertices.push_back(double_cube[i]);
 
     int cell_vertices[n_cells][8] = {
       {0, 1, 2, 3, 4, 5, 6, 7},    // unit cube
@@ -296,9 +295,6 @@ namespace Step20
       {
         for (const unsigned int vertex_index :
              GeometryInfo<3>::vertex_indices())
-          //        for (unsigned int vertex_index = 0;
-          //        GeometryInfo<3>::vertices_per_cell;
-          //             ++vertex_index)
           {
             cells[cell_index].vertices[vertex_index] =
               cell_vertices[cell_index][vertex_index];
@@ -306,7 +302,6 @@ namespace Step20
           }
       }
 
-    //    GridReordering<3>::invert_all_cells_of_negative_grid(vertices, cells);
     triangulation.create_triangulation(vertices, cells, SubCellData());
   }
 
@@ -440,18 +435,14 @@ namespace Step20
       bool face_flip        = (((config_switch / 2) % 2) == 1);
       bool face_rotation    = ((config_switch % 2) == 1);
 
-      bool manipulate_first_cube = true;
+      bool manipulate_first_cube = false;
 
-      generate_test_mesh(triangulation_coarse,
-                         face_orientation,
-                         face_flip,
-                         face_rotation,
-                         manipulate_first_cube);
+      GridGenerator::orientation_test_mesh(triangulation_coarse,
+                                           face_orientation,
+                                           face_flip,
+                                           face_rotation,
+                                           manipulate_first_cube);
     }
-
-    //    GridTools::distort_random(/* factor */ 0.15,
-    //                              triangulation_coarse,
-    //                              /* keep_boundary */ false);
 
     triangulation_coarse.refine_global(0);
 
@@ -484,10 +475,6 @@ namespace Step20
                  face_index < GeometryInfo<dim>::faces_per_cell;
                  ++face_index)
               {
-                //                typename Triangulation<dim>::face_iterator
-                //                face =
-                //                  cell->face(face_index);
-
                 std::cout << "      {" << face_index << " -> "
                           << cell->face_orientation(face_index) << " | "
                           << cell->face_flip(face_index) << " | "
@@ -546,12 +533,14 @@ namespace Step20
     ShapeFun::ShapeFunctionVector<dim> shape_function(*fe_ptr,
                                                       cell,
                                                       /* degree */ degree);
-    QGauss<dim>                        quad_rule(degree + 3);
+    QGauss<dim>                        quad_rule(degree + 1);
 
     /*
      * Project only face dofs
      */
-    std::cout << "Projecting   " << n_dofs_per_cell << "   dofs ...";
+    std::cout << "Projecting   "
+              << n_dofs_per_quad * GeometryInfo<dim>::faces_per_cell
+              << "   dofs ...";
     for (unsigned int i = 0; i < n_dofs_per_cell; ++i)
       {
         basis[i].reinit(dof_handler.n_dofs());
@@ -589,14 +578,6 @@ namespace Step20
          */
         unsigned int face_index_from_shape_index =
           dof_index / (n_dofs_per_face);
-
-        /*
-         * If we are on a face that does not have standard orientation we must
-         * flip signs, correction may be necessary later for some face dofs
-         * though
-         */
-        if (!cell->face_orientation(face_index_from_shape_index))
-          sign_flip = true;
 
         const unsigned int n = degree;
 
@@ -657,6 +638,13 @@ namespace Step20
               sign_flip = ((i % 2) == 1);
           }
         // flip = false, rotation=false => nothing to do
+
+        /*
+         * If we are on a face that does not have standard orientation we must
+         * flip all signs again
+         */
+        if (!cell->face_orientation(face_index_from_shape_index))
+          sign_flip = !sign_flip;
 
       } // if dof_index < n_face_dofs
 
@@ -980,8 +968,8 @@ main(int argc, char *argv[])
       const unsigned int fe_degree = 1;
 
       //      FE_BDM<dim> fe(fe_degree);
-      FE_RaviartThomas<dim> fe(fe_degree);
-      //      FE_Nedelec<dim> fe(fe_degree);
+      //      FE_RaviartThomas<dim> fe(fe_degree);
+      FE_Nedelec<dim> fe(fe_degree);
       //      FE_NedelecSZ<dim> fe(fe_degree);
       //      FE_BernardiRaugel<dim> fe(fe_degree);
 
