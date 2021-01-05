@@ -32,6 +32,7 @@
 #include <deal.II/fe/fe_raviart_thomas.h>
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/fe/fe_values.h>
+#include <deal.II/fe/mapping_q.h>
 
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_tools.h>
@@ -109,8 +110,11 @@ namespace Step20
     const unsigned int degree;
 
     Triangulation<dim> triangulation;
-    FESystem<dim>      fe;
-    DoFHandler<dim>    dof_handler;
+
+    const MappingQ<dim> mapping;
+
+    FESystem<dim>   fe;
+    DoFHandler<dim> dof_handler;
 
     BlockSparsityPattern      sparsity_pattern;
     BlockSparseMatrix<double> system_matrix;
@@ -137,6 +141,7 @@ namespace Step20
                                                 const bool         _natural_bc,
                                                 const bool _problematic_domain)
     : degree(degree)
+    , mapping(1, /* use_mapping_q_on_all_cells */ true)
     , fe(FE_RaviartThomas<dim>(degree), 1, FE_DGQ<dim>(degree), 1)
     //    , fe(FE_BDM<dim>(degree + 1), 1, FE_DGP<dim>(degree), 1)
     , dof_handler(triangulation)
@@ -214,7 +219,9 @@ namespace Step20
 
     triangulation.refine_global(n_refine);
 
-    if (true)
+    //    GridTools::distort_random(0.2, triangulation, false);
+
+    if (false)
       {
         unsigned int i = 0;
         for (auto cell : triangulation.active_cell_iterators())
@@ -440,11 +447,13 @@ namespace Step20
     QGauss<dim>     quadrature_formula(degree + 2);
     QGauss<dim - 1> face_quadrature_formula(degree + 2);
 
-    FEValues<dim>     fe_values(fe,
+    FEValues<dim>     fe_values(mapping,
+                            fe,
                             quadrature_formula,
                             update_values | update_gradients |
                               update_quadrature_points | update_JxW_values);
-    FEFaceValues<dim> fe_face_values(fe,
+    FEFaceValues<dim> fe_face_values(mapping,
+                                     fe,
                                      face_quadrature_formula,
                                      update_values | update_normal_vectors |
                                        update_quadrature_points |
@@ -691,6 +700,7 @@ namespace Step20
                          quad_rule,
                          PrescribedSolution::ExactSolution<dim>(),
                          projected_exact_solution);
+    constraints.distribute(projected_exact_solution);
   }
 
 
@@ -810,6 +820,12 @@ namespace Step20
                              projected_exact_solution,
                              exact_solution_names,
                              interpretation);
+
+    BlockVector<double> error(projected_exact_solution);
+    error.sadd(-1.0, solution);
+    std::vector<std::string> error_names(dim, "u_error");
+    error_names.emplace_back("p_error");
+    data_out.add_data_vector(dof_handler, error, error_names, interpretation);
 
     data_out.build_patches(degree + 1);
 
@@ -1000,7 +1016,7 @@ main(int argc, char *argv[])
       using namespace Step20;
 
       const unsigned int dim                = 3;
-      const bool         problematic_domain = true;
+      const bool         problematic_domain = false;
       const bool         project            = false;
 
       if (dim == 2)

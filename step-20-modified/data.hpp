@@ -119,7 +119,7 @@ namespace PrescribedSolution
 
     values(0) = alpha * p[1] * p[1] / 2 + beta - alpha * p[0] * p[0] / 2;
     values(1) = alpha * p[0] * p[1];
-    values(2) = -alpha;
+    values(2) = alpha;
     values(3) = -(alpha * p[0] * p[1] * p[1] / 2 + beta * p[0] -
                   alpha * p[0] * p[0] * p[0] / 6 + alpha * p[2]);
   }
@@ -187,7 +187,7 @@ namespace PrescribedSolution
 
     values(0) = alpha * p[1] * p[1] / 2 + beta - alpha * p[0] * p[0] / 2;
     values(1) = alpha * p[0] * p[1];
-    values(2) = -alpha;
+    values(2) = alpha;
   }
 
 
@@ -207,7 +207,7 @@ namespace PrescribedSolution
         values[i][0] = alpha * points[i][1] * points[i][1] / 2 + beta -
                        alpha * points[i][0] * points[i][0] / 2;
         values[i][1] = alpha * points[i][0] * points[i][1];
-        values[i][2] = -alpha;
+        values[i][2] = alpha;
       }
   }
 
