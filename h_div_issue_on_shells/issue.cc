@@ -417,6 +417,8 @@ namespace Step20
     ///////////////////////////////////
     ///////////////////////////////////
 
+    GridGenerator::hyper_cube(triangulation_coarse, 0, 1, /* colorize */ true);
+
     //    GridGenerator::hyper_shell(triangulation_coarse,
     //                               Point<dim>(),
     //                               1,
@@ -430,21 +432,23 @@ namespace Step20
     //                           /* R */ 2,
     //                           /* r */ 0.5);
 
-    {
-      bool face_orientation = (((config_switch / 4) % 2) == 1);
-      bool face_flip        = (((config_switch / 2) % 2) == 1);
-      bool face_rotation    = ((config_switch % 2) == 1);
-
-      bool manipulate_first_cube = false;
-
-      GridGenerator::orientation_test_mesh(triangulation_coarse,
-                                           face_orientation,
-                                           face_flip,
-                                           face_rotation,
-                                           manipulate_first_cube);
-    }
+    //    {
+    //      bool face_orientation = (((config_switch / 4) % 2) == 1);
+    //      bool face_flip        = (((config_switch / 2) % 2) == 1);
+    //      bool face_rotation    = ((config_switch % 2) == 1);
+    //
+    //      bool manipulate_first_cube = false;
+    //
+    //      GridGenerator::orientation_test_mesh(triangulation_coarse,
+    //                                           face_orientation,
+    //                                           face_flip,
+    //                                           face_rotation,
+    //                                           manipulate_first_cube);
+    //    }
 
     triangulation_coarse.refine_global(0);
+
+    GridTools::distort_random(0.2, triangulation_coarse, false);
 
     ///////////////////////////////////
     ///////////////////////////////////
@@ -965,11 +969,11 @@ main(int argc, char *argv[])
       using namespace Step20;
 
       const int          dim       = 3;
-      const unsigned int fe_degree = 1;
+      const unsigned int fe_degree = 0;
 
       //      FE_BDM<dim> fe(fe_degree);
-      //      FE_RaviartThomas<dim> fe(fe_degree);
-      FE_Nedelec<dim> fe(fe_degree);
+      FE_RaviartThomas<dim> fe(fe_degree);
+      //      FE_Nedelec<dim> fe(fe_degree);
       //      FE_NedelecSZ<dim> fe(fe_degree);
       //      FE_BernardiRaugel<dim> fe(fe_degree);
 

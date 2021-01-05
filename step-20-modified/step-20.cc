@@ -219,7 +219,7 @@ namespace Step20
 
     triangulation.refine_global(n_refine);
 
-    //    GridTools::distort_random(0.2, triangulation, false);
+    //    GridTools::distort_random(0.1, triangulation, false);
 
     if (false)
       {
@@ -329,7 +329,7 @@ namespace Step20
                                        1,
                                        2,
                                        /* n_cells */ (dim == 3) ? 6 : 12,
-                                       /* colorize */ false);
+                                       /* colorize */ true);
           }
         else
           {
@@ -353,12 +353,14 @@ namespace Step20
          */
         std::cout << "Using cuboid domain..." << std::endl;
 
-        GridGenerator::hyper_cube(triangulation, -1, 1, /* colorize */ false);
+        GridGenerator::hyper_cube(triangulation, -1, 1, /* colorize */ true);
       }
 
     print_mesh_info();
 
     triangulation.refine_global(n_refine);
+
+    //    GridTools::distort_random(0.1, triangulation, false);
 
     dof_handler.distribute_dofs(fe);
 
@@ -886,6 +888,8 @@ namespace Step20
   void
   MixedLaplaceProblem<dim>::run(const bool project)
   {
+    std::cout << std::endl;
+
     if (project)
       {
         make_projection_grid_and_dofs();
@@ -901,6 +905,8 @@ namespace Step20
         compute_errors();
       }
     output_results();
+
+    std::cout << std::endl;
   }
 } // namespace Step20
 
@@ -1016,7 +1022,7 @@ main(int argc, char *argv[])
       using namespace Step20;
 
       const unsigned int dim                = 3;
-      const bool         problematic_domain = false;
+      const bool         problematic_domain = true;
       const bool         project            = false;
 
       if (dim == 2)
@@ -1034,6 +1040,8 @@ main(int argc, char *argv[])
                                                          problematic_domain);
             mixed_laplace_problem.run(project);
           }
+
+          std::cout << std::endl;
 
           {
             /*
@@ -1067,6 +1075,8 @@ main(int argc, char *argv[])
             mixed_laplace_problem.run(project);
           }
 
+          std::cout << "-----------------" << std::endl;
+
           {
             /*
              * Solve with essential boundary conditions. Note that the
@@ -1088,6 +1098,9 @@ main(int argc, char *argv[])
           std::cerr << "Dimension not supported." << std::endl;
           exit(1);
         }
+
+      std::cout << "*************************************************"
+                << std::endl;
     }
   catch (std::exception &exc)
     {
