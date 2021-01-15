@@ -14,6 +14,7 @@
 #include <deal.II/fe/fe_dgq.h>
 #include <deal.II/fe/fe_nedelec.h>
 #include <deal.II/fe/fe_nedelec_sz.h>
+#include <deal.II/fe/fe_q.h>
 #include <deal.II/fe/fe_raviart_thomas.h>
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/fe/fe_values.h>
@@ -38,6 +39,7 @@
 #include <deal.II/numerics/matrix_tools.h>
 #include <deal.II/numerics/vector_tools.h>
 
+#include <shape_fun_scalar.hpp>
 #include <shape_fun_vector.hpp>
 
 #include <fstream>
@@ -417,7 +419,8 @@ namespace Step20
     ///////////////////////////////////
     ///////////////////////////////////
 
-    GridGenerator::hyper_cube(triangulation_coarse, 0, 1, /* colorize */ true);
+    //    GridGenerator::hyper_cube(triangulation_coarse, 0, 1, /* colorize */
+    //    true);
 
     //    GridGenerator::hyper_shell(triangulation_coarse,
     //                               Point<dim>(),
@@ -432,23 +435,23 @@ namespace Step20
     //                           /* R */ 2,
     //                           /* r */ 0.5);
 
-    //    {
-    //      bool face_orientation = (((config_switch / 4) % 2) == 1);
-    //      bool face_flip        = (((config_switch / 2) % 2) == 1);
-    //      bool face_rotation    = ((config_switch % 2) == 1);
-    //
-    //      bool manipulate_first_cube = false;
-    //
-    //      GridGenerator::orientation_test_mesh(triangulation_coarse,
-    //                                           face_orientation,
-    //                                           face_flip,
-    //                                           face_rotation,
-    //                                           manipulate_first_cube);
-    //    }
+    {
+      bool face_orientation = (((config_switch / 4) % 2) == 1);
+      bool face_flip        = (((config_switch / 2) % 2) == 1);
+      bool face_rotation    = ((config_switch % 2) == 1);
+
+      bool manipulate_first_cube = false;
+
+      GridGenerator::orientation_test_mesh(triangulation_coarse,
+                                           face_orientation,
+                                           face_flip,
+                                           face_rotation,
+                                           manipulate_first_cube);
+    }
 
     triangulation_coarse.refine_global(0);
 
-    GridTools::distort_random(0.2, triangulation_coarse, false);
+    //    GridTools::distort_random(0.2, triangulation_coarse, false);
 
     ///////////////////////////////////
     ///////////////////////////////////
@@ -534,17 +537,21 @@ namespace Step20
     /*
      * Reinit and project the shape function
      */
-    ShapeFun::ShapeFunctionVector<dim> shape_function(*fe_ptr,
+    ShapeFun::ShapeFunctionScalar<dim> shape_function(*fe_ptr,
                                                       cell,
-                                                      /* degree */ degree);
-    QGauss<dim>                        quad_rule(degree + 1);
+                                                      /* verbose */ false);
+    //    ShapeFun::ShapeFunctionVector<dim> shape_function(*fe_ptr,
+    //                                                      cell,
+    //                                                      /* verbose */
+    //                                                      false);
+
+
+    QGauss<dim> quad_rule(degree + 1);
 
     /*
      * Project only face dofs
      */
-    std::cout << "Projecting   "
-              << n_dofs_per_quad * GeometryInfo<dim>::faces_per_cell
-              << "   dofs ...";
+    std::cout << "Projecting   " << n_dofs_per_cell << "   dofs ...";
     for (unsigned int i = 0; i < n_dofs_per_cell; ++i)
       {
         basis[i].reinit(dof_handler.n_dofs());
@@ -820,17 +827,35 @@ namespace Step20
               }
           }
 
-        const std::vector<std::string> solution_name(
-          dim, std::string("u") + Utilities::int_to_string(dof_index_in, 3));
-        const std::vector<
-          DataComponentInterpretation::DataComponentInterpretation>
-          interpretation(
-            dim, DataComponentInterpretation::component_is_part_of_vector);
+        if (fe_ptr->n_components() == 1)
+          {
+            const std::vector<std::string> solution_name(
+              1, std::string("u") + Utilities::int_to_string(dof_index_in, 3));
+            const std::vector<
+              DataComponentInterpretation::DataComponentInterpretation>
+              interpretation(1,
+                             DataComponentInterpretation::component_is_scalar);
 
-        data_out.add_data_vector(basis[dof_index],
-                                 solution_name,
-                                 DataOut<dim>::type_dof_data,
-                                 interpretation);
+            data_out.add_data_vector(basis[dof_index],
+                                     solution_name,
+                                     DataOut<dim>::type_dof_data,
+                                     interpretation);
+          }
+        else
+          {
+            const std::vector<std::string> solution_name(
+              dim,
+              std::string("u") + Utilities::int_to_string(dof_index_in, 3));
+            const std::vector<
+              DataComponentInterpretation::DataComponentInterpretation>
+              interpretation(
+                dim, DataComponentInterpretation::component_is_part_of_vector);
+
+            data_out.add_data_vector(basis[dof_index],
+                                     solution_name,
+                                     DataOut<dim>::type_dof_data,
+                                     interpretation);
+          }
       }
 
     data_out.build_patches(degree + 1);
@@ -969,13 +994,15 @@ main(int argc, char *argv[])
       using namespace Step20;
 
       const int          dim       = 3;
-      const unsigned int fe_degree = 0;
+      const unsigned int fe_degree = 2;
 
       //      FE_BDM<dim> fe(fe_degree);
-      FE_RaviartThomas<dim> fe(fe_degree);
+      //      FE_RaviartThomas<dim> fe(fe_degree);
       //      FE_Nedelec<dim> fe(fe_degree);
       //      FE_NedelecSZ<dim> fe(fe_degree);
       //      FE_BernardiRaugel<dim> fe(fe_degree);
+
+      FE_Q<dim> fe(fe_degree);
 
       {
         ShapeFunctionWriter<dim> shape_function_writer(fe,
