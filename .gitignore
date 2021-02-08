@@ -1,5 +1,7 @@
 # Ingnore generated documentation
 documentation/
+build-vs-step-20-modified/
+build-vs-h_div_issue_on_shells/
 
 # Prerequisites
 *.d

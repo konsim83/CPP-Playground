@@ -394,10 +394,10 @@ namespace Step20
     n_dofs_per_line   = (*fe_ptr).n_dofs_per_line();
     n_dofs_per_vertex = (*fe_ptr).n_dofs_per_vertex();
 
-    first_line_index      = (*fe_ptr).get_first_line_index();
-    first_quad_index      = (*fe_ptr).get_first_quad_index();
-    first_face_line_index = (*fe_ptr).get_first_face_line_index();
-    first_face_quad_index = (*fe_ptr).get_first_face_quad_index();
+    first_line_index      = (*fe_ptr).first_line_index;
+    first_quad_index      = (*fe_ptr).first_quad_index;
+    first_face_line_index = (*fe_ptr).first_face_line_index;
+    first_face_quad_index = (*fe_ptr).first_face_quad_index;
 
     std::cout << "Element Info:  " << std::endl
               << "   n_dofs_per_cell      : " << n_dofs_per_cell << std::endl
@@ -442,11 +442,11 @@ namespace Step20
 
       bool manipulate_first_cube = false;
 
-      GridGenerator::orientation_test_mesh(triangulation_coarse,
-                                           face_orientation,
-                                           face_flip,
-                                           face_rotation,
-                                           manipulate_first_cube);
+      generate_test_mesh(triangulation_coarse,
+                         face_orientation,
+                         face_flip,
+                         face_rotation,
+                         manipulate_first_cube);
     }
 
     triangulation_coarse.refine_global(0);
@@ -537,13 +537,12 @@ namespace Step20
     /*
      * Reinit and project the shape function
      */
-    ShapeFun::ShapeFunctionScalar<dim> shape_function(*fe_ptr,
+    // ShapeFun::ShapeFunctionScalar<dim> shape_function(*fe_ptr,
+    //                                                   cell,
+    //                                                   /* verbose */ false);
+    ShapeFun::ShapeFunctionVector<dim> shape_function(*fe_ptr,
                                                       cell,
                                                       /* verbose */ false);
-    //    ShapeFun::ShapeFunctionVector<dim> shape_function(*fe_ptr,
-    //                                                      cell,
-    //                                                      /* verbose */
-    //                                                      false);
 
 
     QGauss<dim> quad_rule(degree + 1);
@@ -616,7 +615,8 @@ namespace Step20
          */
         unsigned int local_face_dof = new_dof_index % n_dofs_per_face;
         // Row and column
-        unsigned int i = local_face_dof % n, j = local_face_dof / n;
+        const unsigned int i = local_face_dof % n;
+        const unsigned int j = local_face_dof / n;
 
         /*
          * Maybe switch the sign
@@ -994,15 +994,15 @@ main(int argc, char *argv[])
       using namespace Step20;
 
       const int          dim       = 3;
-      const unsigned int fe_degree = 2;
+      const unsigned int fe_degree = 1;
 
       //      FE_BDM<dim> fe(fe_degree);
-      //      FE_RaviartThomas<dim> fe(fe_degree);
+      FE_RaviartThomas<dim> fe(fe_degree);
       //      FE_Nedelec<dim> fe(fe_degree);
       //      FE_NedelecSZ<dim> fe(fe_degree);
       //      FE_BernardiRaugel<dim> fe(fe_degree);
 
-      FE_Q<dim> fe(fe_degree);
+      // FE_Q<dim> fe(fe_degree);
 
       {
         ShapeFunctionWriter<dim> shape_function_writer(fe,
