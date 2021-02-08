@@ -848,7 +848,7 @@ namespace Step20
                 {
                   const std::pair<unsigned int, bool> dof_index_and_sign_j =
                     adjust_dof_index_and_sign_on_face_rt(
-                      cell, i, fe.base_element(0).degree);
+                      cell, j, fe.base_element(0).degree);
 
                   const unsigned int dof_index_j = dof_index_and_sign_j.first;
                   const double       dof_sign_j =
