@@ -457,10 +457,20 @@ namespace Step20
         /*
          * If face does not have standard orientation permute dofs
          */
-        if (((!cell->face_orientation(face_index_from_shape_index)) &&
-             (!cell->face_rotation(face_index_from_shape_index))) ||
-            ((cell->face_orientation(face_index_from_shape_index)) &&
-             (cell->face_rotation(face_index_from_shape_index))))
+        if ((!cell->face_orientation(face_index_from_shape_index)) &&
+            (!cell->face_rotation(face_index_from_shape_index)))
+          {
+            unsigned int local_face_dof = dof_index % n_dofs_per_face;
+            // Row and column
+            unsigned int i = local_face_dof % n, j = local_face_dof / n;
+
+            // We flip across the diagonal
+            unsigned int offset = j + i * n - local_face_dof;
+
+            new_dof_index = dof_index + offset;
+          } // if face needs dof permutation
+        else if ((cell->face_orientation(face_index_from_shape_index)) &&
+                 (cell->face_rotation(face_index_from_shape_index)))
           {
             unsigned int local_face_dof = dof_index % n_dofs_per_face;
             // Row and column
@@ -877,41 +887,83 @@ namespace Step20
         if (natural_bc)
           {
             for (const auto &face : cell->face_iterators())
-              if (face->at_boundary())
-                {
-                  fe_face_values.reinit(cell, face);
+              {
+                if (face->at_boundary())
+                  {
+                    fe_face_values.reinit(cell, face);
 
-                  pressure_boundary_values.value_list(
-                    fe_face_values.get_quadrature_points(), boundary_values);
+                    pressure_boundary_values.value_list(
+                      fe_face_values.get_quadrature_points(), boundary_values);
 
-                  for (unsigned int q = 0; q < n_face_q_points; ++q)
-                    for (unsigned int i = 0; i < dofs_per_cell; ++i)
-                      local_rhs(i) +=
-                        -(fe_face_values[velocities].value(i, q) * //
-                          fe_face_values.normal_vector(q) *        //
-                          boundary_values[q] *                     //
-                          fe_face_values.JxW(q));
-                }
-          }
+                    for (unsigned int q = 0; q < n_face_q_points; ++q)
+                      {
+                        for (unsigned int i = 0; i < dofs_per_cell; ++i)
+                          {
+                            const std::pair<unsigned int, bool>
+                              dof_index_and_sign_i =
+                                adjust_dof_index_and_sign_on_face_rt(
+                                  cell, i, fe.base_element(0).degree);
+
+                            const unsigned int dof_index_i =
+                              dof_index_and_sign_i.first;
+                            const double dof_sign_i =
+                              (dof_index_and_sign_i.second ? -1.0 : 1.0);
+
+                            // const unsigned int dof_index_i = i;
+                            // const double       dof_sign_i  = 1.0;
+
+                            local_rhs(i) +=
+                              -(dof_sign_i *
+                                fe_face_values[velocities].value(dof_index_i,
+                                                                 q) * //
+                                fe_face_values.normal_vector(q) *     //
+                                boundary_values[q] *                  //
+                                fe_face_values.JxW(q));
+                          }
+                      }
+                  }
+              }
+          } // if (natural_bc)
         else
           {
             for (const auto &face : cell->face_iterators())
-              if ((face->at_boundary()) && (face->boundary_id() != 0))
-                {
-                  fe_face_values.reinit(cell, face);
+              {
+                if ((face->at_boundary()) && (face->boundary_id() != 0))
+                  {
+                    fe_face_values.reinit(cell, face);
 
-                  pressure_boundary_values.value_list(
-                    fe_face_values.get_quadrature_points(), boundary_values);
+                    pressure_boundary_values.value_list(
+                      fe_face_values.get_quadrature_points(), boundary_values);
 
-                  for (unsigned int q = 0; q < n_face_q_points; ++q)
-                    for (unsigned int i = 0; i < dofs_per_cell; ++i)
-                      local_rhs(i) +=
-                        -(fe_face_values[velocities].value(i, q) * //
-                          fe_face_values.normal_vector(q) *        //
-                          boundary_values[q] *                     //
-                          fe_face_values.JxW(q));
-                }
-          }
+                    for (unsigned int q = 0; q < n_face_q_points; ++q)
+                      {
+                        for (unsigned int i = 0; i < dofs_per_cell; ++i)
+                          {
+                            const std::pair<unsigned int, bool>
+                              dof_index_and_sign_i =
+                                adjust_dof_index_and_sign_on_face_rt(
+                                  cell, i, fe.base_element(0).degree);
+
+                            const unsigned int dof_index_i =
+                              dof_index_and_sign_i.first;
+                            const double dof_sign_i =
+                              (dof_index_and_sign_i.second ? -1.0 : 1.0);
+
+                            // const unsigned int dof_index_i = i;
+                            // const double       dof_sign_i  = 1.0;
+
+                            local_rhs(i) +=
+                              -(dof_sign_i *
+                                fe_face_values[velocities].value(dof_index_i,
+                                                                 q) * //
+                                fe_face_values.normal_vector(q) *     //
+                                boundary_values[q] *                  //
+                                fe_face_values.JxW(q));
+                          }
+                      }
+                  }
+              }
+          } // if (!natural_bc)
 
         cell->get_dof_indices(local_dof_indices);
         constraints.distribute_local_to_global(local_matrix,
@@ -1333,7 +1385,7 @@ main(int argc, char *argv[])
           if (args.size() == 1) /* This is not robust. */
             {
               std::cerr << "Error: flag '-d' must be followed by the "
-                        << "space dimension." << std::endl;
+                        << "fe degree." << std::endl;
               exit(1);
             }
           else

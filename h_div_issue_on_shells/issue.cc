@@ -594,10 +594,20 @@ namespace Step20
         /*
          * If face does not have standard orientation permute dofs
          */
-        if (((!cell->face_orientation(face_index_from_shape_index)) &&
-             (!cell->face_rotation(face_index_from_shape_index))) ||
-            ((cell->face_orientation(face_index_from_shape_index)) &&
-             (cell->face_rotation(face_index_from_shape_index))))
+        if ((!cell->face_orientation(face_index_from_shape_index)) &&
+            (!cell->face_rotation(face_index_from_shape_index)))
+          {
+            unsigned int local_face_dof = dof_index % n_dofs_per_face;
+            // Row and column
+            unsigned int i = local_face_dof % n, j = local_face_dof / n;
+
+            // We flip across the diagonal
+            unsigned int offset = j + i * n - local_face_dof;
+
+            new_dof_index = dof_index + offset;
+          } // if face needs dof permutation
+        else if ((cell->face_orientation(face_index_from_shape_index)) &&
+                 (cell->face_rotation(face_index_from_shape_index)))
           {
             unsigned int local_face_dof = dof_index % n_dofs_per_face;
             // Row and column
@@ -757,7 +767,7 @@ namespace Step20
   ShapeFunctionWriter<dim>::output_results(
     typename Triangulation<dim>::cell_iterator &cell)
   {
-    const bool adjust_index_and_sign = false;
+    const bool adjust_index_and_sign = true;
 
     std::function<std::pair<unsigned int, bool>(
       typename Triangulation<dim>::cell_iterator &,
@@ -994,7 +1004,7 @@ main(int argc, char *argv[])
       using namespace Step20;
 
       const int          dim       = 3;
-      const unsigned int fe_degree = 1;
+      const unsigned int fe_degree = 2;
 
       //      FE_BDM<dim> fe(fe_degree);
       FE_RaviartThomas<dim> fe(fe_degree);
