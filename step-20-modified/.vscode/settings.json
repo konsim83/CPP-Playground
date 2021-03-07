@@ -1,6 +1,6 @@
 {
     "cmake.configureSettings": {
-        "DEAL_II_DIR": "/home/ksimon/lib/dealii-9.2.0-lib"
+        "DEAL_II_DIR": "/home/ksimon/lib/dealii-dev-lib"
     },
     "files.associations": {
         "*.tpp": "cpp",

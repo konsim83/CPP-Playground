@@ -555,6 +555,16 @@ namespace Step20
                        face_rotation,
                        manipulate_first_cube);
 
+    // GridGenerator::moebius(triangulation,
+    //                        /* n_cells */ 4,
+    //                        /* n_rotations by pi/2*/ config_switch,
+    //                        /* R */ 2,
+    //                        /* r */ 0.5);
+
+    // GridTools::rotate(/* angle */ numbers::PI / 4,
+    //                   /* axis */ 2,
+    //                   triangulation);
+
     print_mesh_info();
 
     triangulation.refine_global(n_refine);
@@ -841,12 +851,12 @@ namespace Step20
                                                      i,
                                                      fe.base_element(0).degree);
 
-              const unsigned int dof_index_i = dof_index_and_sign_i.first;
-              const double       dof_sign_i =
-                (dof_index_and_sign_i.second ? -1.0 : 1.0);
+              // const unsigned int dof_index_i = dof_index_and_sign_i.first;
+              // const double       dof_sign_i =
+              //   (dof_index_and_sign_i.second ? -1.0 : 1.0);
 
-              // const unsigned int dof_index_i = i;
-              // const double       dof_sign_i  = 1.0;
+              const unsigned int dof_index_i = i;
+              const double       dof_sign_i  = 1.0;
 
               const Tensor<1, dim> phi_i_u =
                 fe_values[velocities].value(dof_index_i, q) * dof_sign_i;
@@ -860,12 +870,12 @@ namespace Step20
                     adjust_dof_index_and_sign_on_face_rt(
                       cell, j, fe.base_element(0).degree);
 
-                  const unsigned int dof_index_j = dof_index_and_sign_j.first;
-                  const double       dof_sign_j =
-                    (dof_index_and_sign_j.second ? -1.0 : 1.0);
+                  // const unsigned int dof_index_j =
+                  // dof_index_and_sign_j.first; const double       dof_sign_j =
+                  //   (dof_index_and_sign_j.second ? -1.0 : 1.0);
 
-                  // const unsigned int dof_index_j = j;
-                  // const double       dof_sign_j  = 1.0;
+                  const unsigned int dof_index_j = j;
+                  const double       dof_sign_j  = 1.0;
 
                   const Tensor<1, dim> phi_j_u =
                     fe_values[velocities].value(dof_index_j, q) * dof_sign_j;
@@ -904,13 +914,13 @@ namespace Step20
                                 adjust_dof_index_and_sign_on_face_rt(
                                   cell, i, fe.base_element(0).degree);
 
-                            const unsigned int dof_index_i =
-                              dof_index_and_sign_i.first;
-                            const double dof_sign_i =
-                              (dof_index_and_sign_i.second ? -1.0 : 1.0);
+                            // const unsigned int dof_index_i =
+                            //   dof_index_and_sign_i.first;
+                            // const double dof_sign_i =
+                            //   (dof_index_and_sign_i.second ? -1.0 : 1.0);
 
-                            // const unsigned int dof_index_i = i;
-                            // const double       dof_sign_i  = 1.0;
+                            const unsigned int dof_index_i = i;
+                            const double       dof_sign_i  = 1.0;
 
                             local_rhs(i) +=
                               -(dof_sign_i *
@@ -1492,15 +1502,15 @@ main(int argc, char *argv[])
          primal
          * variable is not unique. A kernel must be removed.
          */
-        MixedLaplaceProblem<dim> mixed_laplace_problem(fe_degree,
-                                                       n_refine,
-                                                       /*
-                                                       natural_bc
-                                                       */
-                                                       false,
-                                                       problematic_domain,
-                                                       config_switch);
-        mixed_laplace_problem.run(project);
+        // MixedLaplaceProblem<dim> mixed_laplace_problem(fe_degree,
+        //                                                n_refine,
+        //                                                /*
+        //                                                natural_bc
+        //                                                */
+        //                                                false,
+        //                                                problematic_domain,
+        //                                                config_switch);
+        // mixed_laplace_problem.run(project);
       }
 
       std::cout << "*************************************************"
