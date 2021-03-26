@@ -1,0 +1,49 @@
+JobId dell1040 Sun Jan 31 22:22:12 2021
+DEAL::Element Info:  
+DEAL::   name                 : FE_RaviartThomas<3>(0)
+DEAL::   is_primitive         : 0
+DEAL::   n_dofs_per_cell      : 6
+DEAL::   n_dofs_per_face      : 1
+DEAL::   n_dofs_per_quad      : 1
+DEAL::   n_dofs_per_line      : 0
+DEAL::   n_dofs_per_vertex    : 0
+DEAL::
+DEAL::   first_line_index     : 0
+DEAL::   first_quad_index     : 0
+DEAL::   first_face_line_index: 0
+DEAL::   first_face_quad_index: 0
+DEAL::
+DEAL::   n_components         : 3
+DEAL::   n_blocks             : 1
+DEAL::   n_base_elements      : 1
+DEAL::
+DEAL::
+DEAL::3D Mesh properties: 
+DEAL::
+DEAL::CellId = 0_0:
+DEAL::   {face_index -> face_orientation | face_flip | face_rotation}: 
+DEAL::      {0 -> 1 | 0 | 0}
+DEAL::      {1 -> 1 | 0 | 0}
+DEAL::      {2 -> 1 | 0 | 0}
+DEAL::      {3 -> 1 | 0 | 0}
+DEAL::      {4 -> 1 | 0 | 0}
+DEAL::      {5 -> 1 | 0 | 0}
+DEAL::   {line_index -> line_orientation}: 
+DEAL::      {0 -> 1}
+DEAL::      {1 -> 1}
+DEAL::      {2 -> 1}
+DEAL::      {3 -> 1}
+DEAL::CellId = 1_0:
+DEAL::   {face_index -> face_orientation | face_flip | face_rotation}: 
+DEAL::      {0 -> 0 | 0 | 0}
+DEAL::      {1 -> 1 | 0 | 0}
+DEAL::      {2 -> 1 | 0 | 0}
+DEAL::      {3 -> 1 | 0 | 0}
+DEAL::      {4 -> 1 | 0 | 0}
+DEAL::      {5 -> 1 | 0 | 0}
+DEAL::   {line_index -> line_orientation}: 
+DEAL::      {0 -> 1}
+DEAL::      {1 -> 1}
+DEAL::      {2 -> 1}
+DEAL::      {3 -> 1}
+DEAL::Normal jumps (at quad points) in cell   0_0:   at face   0

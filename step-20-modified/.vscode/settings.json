@@ -1,0 +1,6 @@
+{
+    "cmake.configureSettings": {
+        "DEAL_II_DIR": "/home/ksimon/lib/dealii-dev-lib/"
+    },
+    "cmake.generator": "Unix Makefiles"
+}

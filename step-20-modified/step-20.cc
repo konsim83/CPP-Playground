@@ -29,6 +29,7 @@
 #include <deal.II/fe/fe_bdm.h>
 #include <deal.II/fe/fe_dgp.h>
 #include <deal.II/fe/fe_dgq.h>
+#include <deal.II/fe/fe_nedelec.h>
 #include <deal.II/fe/fe_raviart_thomas.h>
 #include <deal.II/fe/fe_system.h>
 #include <deal.II/fe/fe_values.h>
@@ -70,8 +71,9 @@ namespace Step20
   class MixedLaplaceProblem
   {
   public:
-    MixedLaplaceProblem(const unsigned int degree,
+    MixedLaplaceProblem(const unsigned int _degree,
                         const unsigned int _n_refine,
+                        unsigned int       _config_switch,
                         const bool         _natural_bc,
                         const bool         _problematic_domain);
 
@@ -80,10 +82,13 @@ namespace Step20
 
   private:
     void
-    make_grid_and_dofs();
+    make_grid();
 
     void
-    make_projection_grid_and_dofs();
+    make_dofs();
+
+    void
+    make_projection_dofs();
 
     void
     assemble_system();
@@ -128,65 +133,41 @@ namespace Step20
     const bool problematic_domain;
 
     const std::string domain_info;
+
+    const unsigned int config_switch;
   };
 
 
   template <int dim>
-  MixedLaplaceProblem<dim>::MixedLaplaceProblem(const unsigned int degree,
+  MixedLaplaceProblem<dim>::MixedLaplaceProblem(const unsigned int _degree,
                                                 const unsigned int _n_refine,
-                                                const bool         _natural_bc,
+                                                unsigned int _config_switch,
+                                                const bool   _natural_bc,
                                                 const bool _problematic_domain)
-    : degree(degree)
-    , fe(FE_RaviartThomas<dim>(degree), 1, FE_DGQ<dim>(degree), 1)
-    //    , fe(FE_BDM<dim>(degree + 1), 1, FE_DGP<dim>(degree), 1)
+    : degree(_degree)
+    // , fe(FE_Nedelec<dim>(_degree), 1, FE_DGQ<dim>(_degree), 1)
+    , fe(FE_RaviartThomas<dim>(_degree), 1, FE_DGQ<dim>(_degree), 1)
+    //    , fe(FE_BDM<dim>(_degree + 1), 1, FE_DGP<dim>(_degree), 1)
     , dof_handler(triangulation)
     , n_refine(_n_refine)
     , natural_bc(_natural_bc)
     , problematic_domain(_problematic_domain)
     , domain_info(
         (problematic_domain ? "_problematic_domain" : "_cuboid_domain"))
+    , config_switch(_config_switch)
   {}
 
   template <int dim>
   void
-  MixedLaplaceProblem<dim>::make_grid_and_dofs()
+  MixedLaplaceProblem<dim>::make_grid()
   {
     if (problematic_domain)
       {
-        if (true)
-          {
-            /*
-             * Hyper_shell
-             */
-            std::cout << "Using spherical domain..." << std::endl;
+        // alias for better readabilty
+        const unsigned int n_rotate_right_square = config_switch;
 
-            GridGenerator::hyper_shell(triangulation,
-                                       Point<dim>(),
-                                       1,
-                                       2,
-                                       /* n_cells */ (dim == 3) ? 6 : 12,
-                                       /* colorize */ true);
-          }
-        else
-          {
-            /*
-             * Plate with hole
-             */
-            GridGenerator::plate_with_a_hole(triangulation,
-                                             /* inner_radius */ 0.5,
-                                             /* outer_radius */ 1.,
-                                             /* pad_bottom */ 1.,
-                                             /* pad_top */ 1.,
-                                             /* pad_left */ 1.,
-                                             /* pad_right */ 1.,
-                                             /* center */
-                                             /* center */ Point<dim>(),
-                                             /* polar_manifold_id */ 0,
-                                             /* tfi_manifold_id */ 1,
-                                             /* L */ 1.,
-                                             /* n_slices */ 2,
-                                             /* colorize */ true);
-          }
+        GridGenerator::non_standard_orientation_mesh(triangulation,
+                                                     n_rotate_right_square);
       }
     else
       {
@@ -205,7 +186,51 @@ namespace Step20
     print_mesh_info();
 
     triangulation.refine_global(n_refine);
+  }
 
+
+  template <>
+  void
+  MixedLaplaceProblem<3>::make_grid()
+  {
+    if (problematic_domain)
+      {
+        const bool face_orientation = (((config_switch / 4) % 2) == 1);
+        const bool face_flip        = (((config_switch / 2) % 2) == 1);
+        const bool face_rotation    = ((config_switch % 2) == 1);
+
+        const bool manipulate_first_cube = true;
+
+        GridGenerator::non_standard_orientation_mesh(triangulation,
+                                                     face_orientation,
+                                                     face_flip,
+                                                     face_rotation,
+                                                     manipulate_first_cube);
+      }
+    else
+      {
+        /*
+         * Cube
+         */
+        std::cout << "Using cuboid domain..." << std::endl;
+
+        GridGenerator::hyper_cube(triangulation, -1, 1, /* colorize */ true);
+      }
+
+    //    GridTools::distort_random(/* factor */ 0.15,
+    //                              triangulation,
+    //                              /* keep_boundary */ false);
+
+    print_mesh_info();
+
+    triangulation.refine_global(n_refine);
+  }
+
+
+  template <int dim>
+  void
+  MixedLaplaceProblem<dim>::make_dofs()
+  {
     dof_handler.distribute_dofs(fe);
 
     DoFRenumbering::component_wise(dof_handler);
@@ -286,57 +311,8 @@ namespace Step20
 
   template <int dim>
   void
-  MixedLaplaceProblem<dim>::make_projection_grid_and_dofs()
+  MixedLaplaceProblem<dim>::make_projection_dofs()
   {
-    if (problematic_domain)
-      {
-        if (true)
-          {
-            /*
-             * Hyper_shell
-             */
-            std::cout << "Using spherical domain..." << std::endl;
-
-            GridGenerator::hyper_shell(triangulation,
-                                       Point<dim>(),
-                                       1,
-                                       2,
-                                       /* n_cells */ (dim == 3) ? 6 : 12,
-                                       /* colorize */ false);
-          }
-        else
-          {
-            /*
-             * Plate with hole
-             */
-            GridGenerator::plate_with_a_hole(triangulation,
-                                             /* inner_radius */ 0.5,
-                                             /* outer_radius */ 1.,
-                                             /* pad_bottom */ 1.,
-                                             /* pad_top */ 1.,
-                                             /* pad_left */ 1.,
-                                             /* pad_right */ 1.,
-                                             /* center */ Point<dim>());
-          }
-      }
-    else
-      {
-        /*
-         * Cube
-         */
-        std::cout << "Using cuboid domain..." << std::endl;
-
-        GridGenerator::hyper_cube(triangulation, -1, 1, /* colorize */ false);
-      }
-
-    //    GridTools::distort_random(/* factor */ 0.15,
-    //                              triangulation,
-    //                              /* keep_boundary */ false);
-
-    print_mesh_info();
-
-    triangulation.refine_global(n_refine);
-
     dof_handler.distribute_dofs(fe);
 
     DoFRenumbering::component_wise(dof_handler);
@@ -856,13 +832,15 @@ namespace Step20
   {
     if (project)
       {
-        make_projection_grid_and_dofs();
+        make_grid();
+        make_projection_dofs();
         assemble_projection_system();
         project_on_space();
       }
     else
       {
-        make_grid_and_dofs();
+        make_grid();
+        make_dofs();
         assemble_system();
         solve();
         compute_errors();
@@ -880,14 +858,22 @@ main(int argc, char *argv[])
   // Very simple way of input handling.
   if (argc < 2)
     {
-      std::cout << "You must provide an initial number of global refinements "
-                   "\"-n n_refine\""
-                << std::endl;
+      std::cout
+        << "You must provide:" << std::endl
+        << "   an initial number of global refinements     \"-n n_refine\""
+        << std::endl
+        << "   the space dimension                         \"-d dim\""
+        << std::endl
+        << "   a domain config switch                      \"-c config_switch\""
+        << std::endl
+        << std::endl;
+
       exit(1);
     }
 
-  unsigned int n_refine = 0;
-  unsigned int dim      = 0;
+  unsigned int n_refine      = 0;
+  unsigned int dim           = 0;
+  unsigned int config_switch = 0;
 
   std::list<std::string> args;
   for (int i = 1; i < argc; ++i)
@@ -967,6 +953,41 @@ main(int argc, char *argv[])
               args.pop_front();
             }
         }
+      else if (args.front() == std::string("-c"))
+        {
+          if (args.size() == 1) /* This is not robust. */
+            {
+              std::cerr << "Error: flag '-c' must be followed by the "
+                        << "cell configuraation." << std::endl;
+              exit(1);
+            }
+          else
+            {
+              args.pop_front();
+
+              try
+                {
+                  std::size_t pos;
+                  config_switch = std::stoi(args.front(), &pos);
+                  if (pos < args.front().size())
+                    {
+                      std::cerr
+                        << "Trailing characters after number: " << args.front()
+                        << '\n';
+                    }
+                }
+              catch (std::invalid_argument const &ex)
+                {
+                  std::cerr << "Invalid number: " << args.front() << '\n';
+                }
+              catch (std::out_of_range const &ex)
+                {
+                  std::cerr << "Number out of range: " << args.front() << '\n';
+                }
+
+              args.pop_front();
+            }
+        }
       else
         {
           std::cerr << "Unknown command line option: " << args.front()
@@ -982,11 +1003,9 @@ main(int argc, char *argv[])
     {
       using namespace Step20;
 
-      const unsigned int fe_degree = 1;
-
-      const bool problematic_domain = true;
-
-      const bool project = false;
+      const unsigned int fe_degree          = 0;
+      const bool         problematic_domain = true;
+      const bool         project            = false;
 
       if (dim == 2)
         {
@@ -996,6 +1015,7 @@ main(int argc, char *argv[])
              */
             MixedLaplaceProblem<2> mixed_laplace_problem(fe_degree,
                                                          n_refine,
+                                                         config_switch,
                                                          /*
                                                          natural_bc
                                                           */
@@ -1012,6 +1032,7 @@ main(int argc, char *argv[])
              */
             MixedLaplaceProblem<2> mixed_laplace_problem(fe_degree,
                                                          n_refine,
+                                                         config_switch,
                                                          /*
                                                          natural_bc
                                                          */
@@ -1028,6 +1049,7 @@ main(int argc, char *argv[])
              */
             MixedLaplaceProblem<3> mixed_laplace_problem(fe_degree,
                                                          n_refine,
+                                                         config_switch,
                                                          /*
                                                          natural_bc
                                                           */
@@ -1044,6 +1066,7 @@ main(int argc, char *argv[])
              */
             MixedLaplaceProblem<3> mixed_laplace_problem(fe_degree,
                                                          n_refine,
+                                                         config_switch,
                                                          /*
                                                          natural_bc
                                                          */
