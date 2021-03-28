@@ -1,9 +1,9 @@
-SET(TARGET "step20_3D")
+SET(TARGET "step-20")
 
 include_directories(${CMAKE_SOURCE_DIR})
 
 SET(TARGET_SRC
-  ${TARGET}.cpp
+  ${TARGET}.cc
   )
 
 # Usually, you will not need to modify anything beyond this point...

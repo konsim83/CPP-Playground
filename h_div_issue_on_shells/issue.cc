@@ -1,3 +1,5 @@
+#define Limit_Threads_For_DEBUG
+
 #include <deal.II/base/function.h>
 #include <deal.II/base/logstream.h>
 #include <deal.II/base/quadrature_lib.h>
@@ -9,6 +11,7 @@
 #include <deal.II/dofs/dof_renumbering.h>
 #include <deal.II/dofs/dof_tools.h>
 
+#include <deal.II/fe/fe_abf.h>
 #include <deal.II/fe/fe_bdm.h>
 #include <deal.II/fe/fe_bernardi_raugel.h>
 #include <deal.II/fe/fe_dgq.h>
@@ -42,6 +45,7 @@
 #include <grid.h>
 #include <shape_fun_scalar.hpp>
 #include <shape_fun_vector.hpp>
+#include <test_mesh.h>
 
 #include <fstream>
 #include <functional>
@@ -53,6 +57,10 @@
 namespace Step20
 {
   using namespace dealii;
+<<<<<<< HEAD
+=======
+
+>>>>>>> safe
   template <int dim>
   class ShapeFunctionWriter
   {
@@ -119,6 +127,10 @@ namespace Step20
     first_quad_index      = (*fe_ptr).first_quad_index;
     first_face_line_index = (*fe_ptr).first_face_line_index;
     first_face_quad_index = (*fe_ptr).first_face_quad_index;
+<<<<<<< HEAD
+=======
+
+>>>>>>> safe
 
     std::cout << "Element Info:  " << std::endl
               << "   n_dofs_per_cell      : " << n_dofs_per_cell << std::endl
@@ -140,18 +152,56 @@ namespace Step20
     ///////////////////////////////////
     ///////////////////////////////////
 
+<<<<<<< HEAD
     {
       bool face_orientation = (((config_switch / 4) % 2) == 1);
       bool face_flip        = (((config_switch / 2) % 2) == 1);
       bool face_rotation    = ((config_switch % 2) == 1);
 
       bool manipulate_first_cube = false;
+=======
+    //    GridGenerator::hyper_shell(triangulation_coarse,
+    //                               Point<dim>(),
+    //                               1,
+    //                               2,
+    //                               /* n_cells */ 6,
+    //                               /* colorize */ false);
 
-      generate_test_mesh(triangulation_coarse,
-                         face_orientation,
-                         face_flip,
-                         face_rotation,
-                         manipulate_first_cube);
+    //    GridGenerator::moebius(triangulation_coarse,
+    //                           /* n_cells */ 8,
+    //                           /* n_rotations by pi/2*/ 1,
+    //                           /* R */ 2,
+    //                           /* r */ 0.5);
+
+
+    // {
+    //   // dim == 3
+    //   bool face_orientation = (((config_switch / 4) % 2) == 1);
+    //   bool face_flip        = (((config_switch / 2) % 2) == 1);
+    //   bool face_rotation    = ((config_switch % 2) == 1);
+
+    //   bool manipulate_first_cube = true;
+>>>>>>> safe
+
+    //   generate_test_mesh_3D(triangulation_coarse,
+    //                         face_orientation,
+    //                         face_flip,
+    //                         face_rotation,
+    //                         manipulate_first_cube);
+    // }
+    {
+      // dim == 2
+      if (dim == 2)
+        AssertThrow(config_switch < 4,
+                    ExcMessage(
+                      "If dim=2 the config witch must be less that 3."));
+
+      const bool rotate_left_square  = (((config_switch / 2) % 2) == 1);
+      const bool rotate_right_square = ((config_switch % 2) == 1);
+
+      generate_test_mesh_2D(triangulation_coarse,
+                            rotate_left_square,
+                            rotate_right_square);
     }
 
     triangulation_coarse.refine_global(0);
@@ -443,16 +493,30 @@ main(int argc, char *argv[])
 
   try
     {
+#ifdef DEBUG
+#  ifdef Limit_Threads_For_DEBUG
+      dealii::MultithreadInfo::set_thread_limit(1);
+#  endif
+#endif
       using namespace Step20;
 
-      const int          dim       = 3;
-      const unsigned int fe_degree = 1;
+      constexpr int      dim       = 2;
+      const unsigned int fe_degree = 2;
 
+<<<<<<< HEAD
       FE_BDM<dim> fe(fe_degree);
       // FE_RaviartThomas<dim> fe(fe_degree);
       //      FE_Nedelec<dim> fe(fe_degree);
       //      FE_NedelecSZ<dim> fe(fe_degree);
       //      FE_BernardiRaugel<dim> fe(fe_degree);
+=======
+      // FE_BDM<dim>           fe(fe_degree);
+      // FE_ABF<dim>           fe(fe_degree);
+      // FE_RaviartThomas<dim> fe(fe_degree);
+      FE_Nedelec<dim> fe(fe_degree);
+      //  FE_NedelecSZ<dim> fe(fe_degree);
+      //  FE_BernardiRaugel<dim> fe(fe_degree);
+>>>>>>> safe
 
       // FE_Q<dim> fe(fe_degree);
 
