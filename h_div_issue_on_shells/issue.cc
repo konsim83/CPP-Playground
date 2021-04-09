@@ -170,11 +170,11 @@ namespace Step20
   }
 
 
-  template <int dim>
-  ShapeFunctionWriter<dim>::ShapeFunctionWriter(
-    const FiniteElement<dim> &_fe,
-    const unsigned int        n_refine_each_cell,
-    const unsigned int        config_switch)
+  template <>
+  ShapeFunctionWriter<2>::ShapeFunctionWriter(
+    const FiniteElement<2> &_fe,
+    const unsigned int      n_refine_each_cell,
+    const unsigned int      config_switch)
     : degree(_fe.degree)
     , n_refine_each_cell(n_refine_each_cell)
     , fe_ptr(&_fe)
@@ -217,12 +217,10 @@ namespace Step20
     AssertThrow(config_switch < 4,
                 ExcMessage("If dim=2 the config witch must be less that 3."));
 
-    const bool rotate_left_square  = (((config_switch / 2) % 2) == 1);
-    const bool rotate_right_square = ((config_switch % 2) == 1);
+    const bool n_rotate_right_square = config_switch;
 
     GridGenerator::non_standard_orientation_mesh(triangulation_coarse,
-                                                 rotate_left_square,
-                                                 rotate_right_square);
+                                                 n_rotate_right_square);
 
     triangulation_coarse.refine_global(0);
     // GridTools::distort_random(0.2, triangulation_coarse, false);
