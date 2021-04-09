@@ -39,7 +39,7 @@ namespace ShapeFun
     ShapeFunctionVector(const FiniteElement<dim> &                  fe,
                         typename Triangulation<dim>::cell_iterator &cell,
                         bool verbose               = false,
-                        bool adjust_index_and_sign = true);
+                        bool adjust_index_and_sign = false);
 
     virtual void
     vector_value(const Point<dim> &p, Vector<double> &value) const override;

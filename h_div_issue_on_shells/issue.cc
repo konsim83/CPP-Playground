@@ -57,10 +57,7 @@
 namespace Step20
 {
   using namespace dealii;
-<<<<<<< HEAD
-=======
 
->>>>>>> safe
   template <int dim>
   class ShapeFunctionWriter
   {
@@ -76,6 +73,9 @@ namespace Step20
     void
     make_grid_and_dofs_and_project(
       typename Triangulation<dim>::cell_iterator &cell);
+
+    void
+    plot_mesh_info();
 
     void
     output_results(typename Triangulation<dim>::cell_iterator &cell);
@@ -101,7 +101,74 @@ namespace Step20
     unsigned int first_quad_index;
     unsigned int first_face_line_index;
     unsigned int first_face_quad_index;
+
+    const bool do_plot = true;
   };
+
+  template <>
+  ShapeFunctionWriter<3>::ShapeFunctionWriter(
+    const FiniteElement<3> &_fe,
+    const unsigned int      n_refine_each_cell,
+    const unsigned int      config_switch)
+    : degree(_fe.degree)
+    , n_refine_each_cell(n_refine_each_cell)
+    , fe_ptr(&_fe)
+    , dof_handler(triangulation)
+    , basis((*fe_ptr).n_dofs_per_cell())
+  {
+    /*
+     * Assume all faces have the same number of dofs
+     */
+    n_dofs_per_cell   = (*fe_ptr).n_dofs_per_cell();
+    n_dofs_per_face   = (*fe_ptr).n_dofs_per_face();
+    n_dofs_per_quad   = (*fe_ptr).n_dofs_per_quad();
+    n_dofs_per_line   = (*fe_ptr).n_dofs_per_line();
+    n_dofs_per_vertex = (*fe_ptr).n_dofs_per_vertex();
+
+    first_line_index      = (*fe_ptr).first_line_index;
+    first_quad_index      = (*fe_ptr).first_quad_index;
+    first_face_line_index = (*fe_ptr).first_face_line_index;
+    first_face_quad_index = (*fe_ptr).first_face_quad_index;
+
+
+    std::cout << "Element Info:  " << std::endl
+              << "   n_dofs_per_cell      : " << n_dofs_per_cell << std::endl
+              << "   n_dofs_per_face      : " << n_dofs_per_face << std::endl
+              << "   n_dofs_per_quad      : " << n_dofs_per_quad << std::endl
+              << "   n_dofs_per_line      : " << n_dofs_per_line << std::endl
+              << "   n_dofs_per_vertex    : " << n_dofs_per_vertex << std::endl
+              << "   first_line_index     : " << first_line_index << std::endl
+              << "   first_quad_index     : " << first_quad_index << std::endl
+              << "   first_face_line_index: " << first_face_line_index
+              << std::endl
+              << "   first_face_quad_index: " << first_face_quad_index
+              << std::endl
+              << std::endl
+              << std::endl;
+
+
+    ///////////////////////////////////
+    ///////////////////////////////////
+    bool face_orientation = (((config_switch / 4) % 2) == 1);
+    bool face_flip        = (((config_switch / 2) % 2) == 1);
+    bool face_rotation    = ((config_switch % 2) == 1);
+
+    bool manipulate_first_cube = true;
+
+    GridGenerator::non_standard_orientation_mesh(triangulation_coarse,
+                                                 face_orientation,
+                                                 face_flip,
+                                                 face_rotation,
+                                                 manipulate_first_cube);
+
+    triangulation_coarse.refine_global(0);
+    // GridTools::distort_random(0.2, triangulation_coarse, false);
+    ///////////////////////////////////
+    ///////////////////////////////////
+
+    plot_mesh_info();
+  }
+
 
   template <int dim>
   ShapeFunctionWriter<dim>::ShapeFunctionWriter(
@@ -127,10 +194,7 @@ namespace Step20
     first_quad_index      = (*fe_ptr).first_quad_index;
     first_face_line_index = (*fe_ptr).first_face_line_index;
     first_face_quad_index = (*fe_ptr).first_face_quad_index;
-<<<<<<< HEAD
-=======
 
->>>>>>> safe
 
     std::cout << "Element Info:  " << std::endl
               << "   n_dofs_per_cell      : " << n_dofs_per_cell << std::endl
@@ -150,70 +214,28 @@ namespace Step20
 
     ///////////////////////////////////
     ///////////////////////////////////
-    ///////////////////////////////////
+    AssertThrow(config_switch < 4,
+                ExcMessage("If dim=2 the config witch must be less that 3."));
 
-<<<<<<< HEAD
-    {
-      bool face_orientation = (((config_switch / 4) % 2) == 1);
-      bool face_flip        = (((config_switch / 2) % 2) == 1);
-      bool face_rotation    = ((config_switch % 2) == 1);
+    const bool rotate_left_square  = (((config_switch / 2) % 2) == 1);
+    const bool rotate_right_square = ((config_switch % 2) == 1);
 
-      bool manipulate_first_cube = false;
-=======
-    //    GridGenerator::hyper_shell(triangulation_coarse,
-    //                               Point<dim>(),
-    //                               1,
-    //                               2,
-    //                               /* n_cells */ 6,
-    //                               /* colorize */ false);
-
-    //    GridGenerator::moebius(triangulation_coarse,
-    //                           /* n_cells */ 8,
-    //                           /* n_rotations by pi/2*/ 1,
-    //                           /* R */ 2,
-    //                           /* r */ 0.5);
-
-
-    // {
-    //   // dim == 3
-    //   bool face_orientation = (((config_switch / 4) % 2) == 1);
-    //   bool face_flip        = (((config_switch / 2) % 2) == 1);
-    //   bool face_rotation    = ((config_switch % 2) == 1);
-
-    //   bool manipulate_first_cube = true;
->>>>>>> safe
-
-    //   generate_test_mesh_3D(triangulation_coarse,
-    //                         face_orientation,
-    //                         face_flip,
-    //                         face_rotation,
-    //                         manipulate_first_cube);
-    // }
-    {
-      // dim == 2
-      if (dim == 2)
-        AssertThrow(config_switch < 4,
-                    ExcMessage(
-                      "If dim=2 the config witch must be less that 3."));
-
-      const bool rotate_left_square  = (((config_switch / 2) % 2) == 1);
-      const bool rotate_right_square = ((config_switch % 2) == 1);
-
-      generate_test_mesh_2D(triangulation_coarse,
-                            rotate_left_square,
-                            rotate_right_square);
-    }
+    GridGenerator::non_standard_orientation_mesh(triangulation_coarse,
+                                                 rotate_left_square,
+                                                 rotate_right_square);
 
     triangulation_coarse.refine_global(0);
-
-    //    GridTools::distort_random(0.2, triangulation_coarse, false);
-
-    ///////////////////////////////////
+    // GridTools::distort_random(0.2, triangulation_coarse, false);
     ///////////////////////////////////
     ///////////////////////////////////
 
-    const bool do_plot = true;
+    plot_mesh_info();
+  }
 
+  template <int dim>
+  void
+  ShapeFunctionWriter<dim>::plot_mesh_info()
+  {
     if (do_plot)
       {
         std::cout << "*********************************************************"
@@ -299,7 +321,7 @@ namespace Step20
       *fe_ptr,
       cell,
       /* verbose */ false,
-      /* adjust_index_and_sign */ true);
+      /* adjust_index_and_sign */ false);
 
 
     QGauss<dim> quad_rule(degree + 1);
@@ -501,22 +523,14 @@ main(int argc, char *argv[])
       using namespace Step20;
 
       constexpr int      dim       = 2;
-      const unsigned int fe_degree = 2;
+      const unsigned int fe_degree = 0;
 
-<<<<<<< HEAD
-      FE_BDM<dim> fe(fe_degree);
-      // FE_RaviartThomas<dim> fe(fe_degree);
-      //      FE_Nedelec<dim> fe(fe_degree);
-      //      FE_NedelecSZ<dim> fe(fe_degree);
-      //      FE_BernardiRaugel<dim> fe(fe_degree);
-=======
       // FE_BDM<dim>           fe(fe_degree);
       // FE_ABF<dim>           fe(fe_degree);
-      // FE_RaviartThomas<dim> fe(fe_degree);
-      FE_Nedelec<dim> fe(fe_degree);
+      FE_RaviartThomas<dim> fe(fe_degree);
+      // FE_Nedelec<dim> fe(fe_degree);
       //  FE_NedelecSZ<dim> fe(fe_degree);
       //  FE_BernardiRaugel<dim> fe(fe_degree);
->>>>>>> safe
 
       // FE_Q<dim> fe(fe_degree);
 
