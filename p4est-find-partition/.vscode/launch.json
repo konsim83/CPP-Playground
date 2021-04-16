@@ -1,0 +1,29 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "(gdb) issue",
+      "type": "cppdbg",
+      "request": "launch",
+      "program": "${workspaceFolder}/../build-vs-${workspaceFolderBasename}/p4est-find-partition",
+      "args": [
+        "-n",
+        "2",
+        "-c",
+        "2"
+      ],
+      "stopAtEntry": true,
+      "cwd": "${workspaceFolder}/../build-vs-${workspaceFolderBasename}/",
+      "environment": [],
+      "externalConsole": false,
+      "MIMode": "gdb",
+      "setupCommands": [
+        {
+          "description": "Enable pretty-printing for gdb",
+          "text": "-enable-pretty-printing",
+          "ignoreFailures": true
+        }
+      ]
+    }
+  ]
+}

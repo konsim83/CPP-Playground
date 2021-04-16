@@ -1,5 +1,11 @@
 {
     "cmake.configureSettings": {
-        "DEAL_II_DIR": "/home/ksimon/lib/dealii-9.2.0-lib/"
+        "DEAL_II_DIR": "/home/ksimon/lib/dealii-dev-lib/"
+    },
+    "cmake.generator": "Unix Makefiles",
+    "files.associations": {
+        "*.tpp": "cpp",
+        "*.txx": "cpp",
+        "ostream": "cpp"
     }
 }

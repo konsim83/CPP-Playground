@@ -84,6 +84,7 @@ namespace Step20
 
     const unsigned int degree;
     const unsigned int n_refine_each_cell;
+    const unsigned int config_switch;
 
     SmartPointer<const FiniteElement<dim>> fe_ptr;
     Triangulation<dim>                     triangulation;
@@ -112,6 +113,7 @@ namespace Step20
     const unsigned int      config_switch)
     : degree(_fe.degree)
     , n_refine_each_cell(n_refine_each_cell)
+    , config_switch(config_switch)
     , fe_ptr(&_fe)
     , dof_handler(triangulation)
     , basis((*fe_ptr).n_dofs_per_cell())
@@ -177,6 +179,7 @@ namespace Step20
     const unsigned int      config_switch)
     : degree(_fe.degree)
     , n_refine_each_cell(n_refine_each_cell)
+    , config_switch(config_switch)
     , fe_ptr(&_fe)
     , dof_handler(triangulation)
     , basis((*fe_ptr).n_dofs_per_cell())
@@ -217,7 +220,7 @@ namespace Step20
     AssertThrow(config_switch < 4,
                 ExcMessage("If dim=2 the config witch must be less that 3."));
 
-    const bool n_rotate_right_square = config_switch;
+    const unsigned int n_rotate_right_square = config_switch;
 
     GridGenerator::non_standard_orientation_mesh(triangulation_coarse,
                                                  n_rotate_right_square);

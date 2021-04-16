@@ -10,6 +10,8 @@
 #include <deal.II/distributed/p4est_wrappers.h>
 #include <deal.II/distributed/tria.h>
 
+#include <deal.II/fe/fe_q.h>
+
 #include <deal.II/grid/grid_generator.h>
 #include <deal.II/grid/grid_out.h>
 #include <deal.II/grid/grid_tools.h>
@@ -57,8 +59,7 @@ public:
         same_on_all_ranks ?
           0.0 :
           std::chrono::high_resolution_clock::now().time_since_epoch().count()))
-    , seed_sequence(std::seed_seq{uint32_t(timeSeed & 0xffffffff),
-                                  uint32_t(timeSeed >> 32)})
+    , seed_sequence{uint32_t(timeSeed & 0xffffffff), uint32_t(timeSeed >> 32)}
   {
     rng.seed(seed_sequence);
   }
